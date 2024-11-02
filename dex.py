@@ -6,8 +6,9 @@ import logging
 from datetime import datetime
 import urllib.parse
 import struct
+from decimal import Decimal, ROUND_DOWN
 
-DEBUG = False  # Change to True for debugging
+DEBUG = True  # Set to False for production
 
 logging.basicConfig(
     level=logging.INFO if DEBUG else logging.ERROR,
@@ -15,49 +16,59 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def clean_string(s):
-    """Clean control characters and invalid UTF-8 from strings"""
-    if not s:
-        return ""
-    return ''.join(char for char in s if ord(char) >= 32 and ord(char) < 127)
+def format_number(value):
+    """Format numbers with appropriate precision"""
+    try:
+        if not isinstance(value, (int, float)) or value == 0:
+            return "0"
+
+        # Handle very small numbers
+        if abs(value) < 0.00000001:
+            return f"{value:.12f}".rstrip('0').rstrip('.')
+
+        # Handle very large numbers
+        if abs(value) > 1e12:
+            return str(int(value))
+
+        # Handle negative numbers
+        if value < 0:
+            return f"-{format_number(abs(value))}"
+
+        # Handle regular decimal numbers
+        d = Decimal(str(value))
+        return str(d.normalize()).rstrip('0').rstrip('.')
+
+    except:
+        return "0"
 
 def decode_metrics(data, start_pos):
-    """Decode numeric metrics from binary data"""
+    """Decode numeric values from binary data"""
     try:
+        if start_pos + 64 > len(data):
+            return {}, start_pos
+
         metrics = {}
         doubles = struct.unpack('8d', data[start_pos:start_pos+64])
 
-        # Map the doubles to metrics - use generic names if unsure
-        field_names = [
-            'price', 'priceUsd', 'priceChangeH24',
-            'liquidityUsd', 'volumeH24', 'fdv',
-            'timestamp', 'metric7'
-        ]
-
-        for i, value in enumerate(field_names):
-            if not (value == 'timestamp' and doubles[i] < 0):  # Skip invalid timestamps
-                metrics[value] = doubles[i]
+        # Only filter out extreme invalid values
+        if -1e308 < doubles[0] < 1e308:
+            metrics['price'] = doubles[0]
+        if -1e308 < doubles[1] < 1e308:
+            metrics['priceUsd'] = doubles[1]
+        if -1e308 < doubles[2] < 1e308:
+            metrics['priceChangeH24'] = doubles[2]
+        if -1e308 < doubles[3] < 1e308:
+            metrics['liquidityUsd'] = doubles[3]
+        if -1e308 < doubles[4] < 1e308:
+            metrics['volumeH24'] = doubles[4]
+        if -1e308 < doubles[5] < 1e308:
+            metrics['fdv'] = doubles[5]
+        if doubles[6] >= 0 and doubles[6] < 1e10:
+            metrics['timestamp'] = doubles[6]
 
         return metrics, start_pos + 64
     except:
         return {}, start_pos
-
-def read_string(data, start_pos):
-    """Read a length-prefixed string from binary data"""
-    try:
-        if start_pos >= len(data):
-            return "", start_pos
-
-        str_len = data[start_pos]
-        start_pos += 1
-
-        if str_len == 0 or start_pos + str_len > len(data):
-            return "", start_pos
-
-        value = data[start_pos:start_pos + str_len].decode('utf-8', errors='ignore')
-        return clean_string(value), start_pos + str_len
-    except:
-        return "", start_pos
 
 def decode_pair(data):
     """Decode a single trading pair from binary data"""
@@ -67,64 +78,49 @@ def decode_pair(data):
 
         # Read strings
         for field in ['chain', 'protocol', 'pairAddress', 'baseTokenName', 'baseTokenSymbol', 'baseTokenAddress']:
-            value, pos = read_string(data, pos)
-            if value:  # Only add non-empty values
+            if pos >= len(data):
+                break
+            str_len = data[pos]
+            pos += 1
+            if str_len == 0 or pos + str_len > len(data):
+                continue
+            value = clean_string(data[pos:pos+str_len].decode('utf-8', errors='ignore'))
+            if value:  # Only include non-empty values
                 pair[field] = value
+            pos += str_len
 
         # Read metrics
         metrics, pos = decode_metrics(data, pos)
 
-        # Convert metrics to expected format
-        if 'price' in metrics:
-            pair['price'] = metrics['price']
-        if 'priceUsd' in metrics:
-            pair['priceUsd'] = metrics['priceUsd']
-        if 'priceChangeH24' in metrics:
-            pair['priceChange'] = {'h24': metrics['priceChangeH24']}
-        if 'liquidityUsd' in metrics:
-            pair['liquidity'] = {'usd': metrics['liquidityUsd']}
-        if 'volumeH24' in metrics:
-            pair['volume'] = {'h24': metrics['volumeH24']}
-        if 'fdv' in metrics:
-            pair['fdv'] = metrics['fdv']
-        if 'timestamp' in metrics and metrics['timestamp'] > 0:
-            pair['pairCreatedAt'] = int(metrics['timestamp'])
-            try:
-                pair['pairCreatedAtFormatted'] = datetime.fromtimestamp(metrics['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-            except:
-                pair['pairCreatedAtFormatted'] = "1970-01-01 00:00:00"
+        if metrics:
+            if 'price' in metrics:
+                pair['price'] = format_number(metrics['price'])
+            if 'priceUsd' in metrics:
+                pair['priceUsd'] = format_number(metrics['priceUsd'])
+            if 'priceChangeH24' in metrics:
+                pair['priceChange'] = {'h24': format_number(metrics['priceChangeH24'])}
+            if 'liquidityUsd' in metrics:
+                pair['liquidity'] = {'usd': format_number(metrics['liquidityUsd'])}
+            if 'volumeH24' in metrics:
+                pair['volume'] = {'h24': format_number(metrics['volumeH24'])}
+            if 'fdv' in metrics:
+                pair['fdv'] = format_number(metrics['fdv'])
 
-        return pair
+            if 'timestamp' in metrics:
+                pair['pairCreatedAt'] = int(metrics['timestamp'])
+                try:
+                    pair['pairCreatedAtFormatted'] = datetime.fromtimestamp(pair['pairCreatedAt']).strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    pair['pairCreatedAtFormatted'] = "1970-01-01 00:00:00"
+
+        # Only return pairs with valid data
+        if any(key in pair for key in ['price', 'priceUsd', 'volume', 'liquidity']) and any(pair.values()):
+            return pair
+
+        return None
     except Exception as e:
         if DEBUG:
             logger.error(f"Error decoding pair: {str(e)}")
-        return None
-
-def decode_message(data):
-    """Decode a complete WebSocket message"""
-    try:
-        if not data.startswith(b'\x00\n1.3.0\n'):
-            return None
-
-        pairs_start = data.find(b'pairs')
-        if pairs_start == -1:
-            return None
-
-        pos = pairs_start + 5  # Skip "pairs"
-        pairs = []
-
-        while pos < len(data):
-            # Look for valid pair data
-            pair = decode_pair(data[pos:pos+512])  # Use fixed chunk size
-            if pair and any(pair.values()):  # Only add pairs with actual data
-                pairs.append(pair)
-            pos += 512
-
-        return {"type": "pairs", "pairs": pairs} if pairs else None
-
-    except Exception as e:
-        if DEBUG:
-            logger.error(f"Error decoding message: {str(e)}")
         return None
 
 async def connect_to_dexscreener():
@@ -151,41 +147,70 @@ async def connect_to_dexscreener():
 
     ssl_context = ssl.create_default_context()
 
-    async with websockets.connect(
-        uri,
-        extra_headers=headers,
-        ssl=ssl_context,
-        max_size=None,
-    ) as websocket:
-        while True:
-            try:
-                message = await websocket.recv()
+    while True:
+        try:
+            async with websockets.connect(
+                uri,
+                extra_headers=headers,
+                ssl=ssl_context,
+                max_size=None,
+            ) as websocket:
+                while True:
+                    try:
+                        message = await websocket.recv()
 
-                # Handle ping-pong
-                if message == "ping":
-                    await websocket.send("pong")
-                    continue
+                        if DEBUG:
+                            logger.info(f"Received message ({len(message)} bytes)")
 
-                # Handle binary messages
-                if isinstance(message, bytes):
-                    data = decode_message(message)
-                    if data and 'pairs' in data:
-                        print(json.dumps(data, indent=None))
+                        if message == "ping":
+                            await websocket.send("pong")
+                            if DEBUG:
+                                logger.info("Sent pong response")
+                            continue
 
-            except websockets.exceptions.ConnectionClosed:
-                break
-            except Exception as e:
-                if DEBUG:
-                    logger.error(f"Error: {str(e)}")
-                continue
+                        if isinstance(message, bytes):
+                            # Skip version check
+                            if not message.startswith(b'\x00\n1.3.0\n'):
+                                continue
+
+                            # Find pairs data
+                            pairs_start = message.find(b'pairs')
+                            if pairs_start == -1:
+                                continue
+
+                            # Process pairs in chunks
+                            pairs = []
+                            pos = pairs_start + 5
+                            while pos < len(message):
+                                pair = decode_pair(message[pos:pos+512])
+                                if pair:
+                                    pairs.append(pair)
+                                pos += 512
+
+                            if pairs:
+                                print(json.dumps({"type": "pairs", "pairs": pairs}, indent=None))
+
+                    except websockets.exceptions.ConnectionClosed:
+                        break
+                    except Exception as e:
+                        if DEBUG:
+                            logger.error(f"Error processing message: {str(e)}")
+                        continue
+
+        except Exception as e:
+            if DEBUG:
+                logger.error(f"Connection error: {str(e)}")
+            await asyncio.sleep(1)
+            continue
 
 async def main():
     while True:
         try:
             await connect_to_dexscreener()
-        except Exception:
+        except Exception as e:
+            if DEBUG:
+                logger.error(f"Main loop error: {str(e)}")
             await asyncio.sleep(1)
-            continue
 
 if __name__ == "__main__":
     asyncio.run(main())
