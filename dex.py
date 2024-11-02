@@ -7,7 +7,7 @@ from datetime import datetime
 import urllib.parse
 import struct
 
-DEBUG = True
+DEBUG = False  # Change to True for debugging
 
 logging.basicConfig(
     level=logging.INFO if DEBUG else logging.ERROR,
@@ -15,93 +15,116 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def decode_pair_data(data, start_pos):
+def clean_string(s):
+    """Clean control characters and invalid UTF-8 from strings"""
+    if not s:
+        return ""
+    return ''.join(char for char in s if ord(char) >= 32 and ord(char) < 127)
+
+def decode_metrics(data, start_pos):
+    """Decode numeric metrics from binary data"""
     try:
+        metrics = {}
+        doubles = struct.unpack('8d', data[start_pos:start_pos+64])
+
+        # Map the doubles to metrics - use generic names if unsure
+        field_names = [
+            'price', 'priceUsd', 'priceChangeH24',
+            'liquidityUsd', 'volumeH24', 'fdv',
+            'timestamp', 'metric7'
+        ]
+
+        for i, value in enumerate(field_names):
+            if not (value == 'timestamp' and doubles[i] < 0):  # Skip invalid timestamps
+                metrics[value] = doubles[i]
+
+        return metrics, start_pos + 64
+    except:
+        return {}, start_pos
+
+def read_string(data, start_pos):
+    """Read a length-prefixed string from binary data"""
+    try:
+        if start_pos >= len(data):
+            return "", start_pos
+
+        str_len = data[start_pos]
+        start_pos += 1
+
+        if str_len == 0 or start_pos + str_len > len(data):
+            return "", start_pos
+
+        value = data[start_pos:start_pos + str_len].decode('utf-8', errors='ignore')
+        return clean_string(value), start_pos + str_len
+    except:
+        return "", start_pos
+
+def decode_pair(data):
+    """Decode a single trading pair from binary data"""
+    try:
+        pos = 0
         pair = {}
 
-        # Read chain
-        chain_len = data[start_pos]
-        start_pos += 1
-        pair['chain'] = data[start_pos:start_pos+chain_len].decode('utf-8')
-        start_pos += chain_len
+        # Read strings
+        for field in ['chain', 'protocol', 'pairAddress', 'baseTokenName', 'baseTokenSymbol', 'baseTokenAddress']:
+            value, pos = read_string(data, pos)
+            if value:  # Only add non-empty values
+                pair[field] = value
 
-        # Read protocol
-        protocol_len = data[start_pos]
-        start_pos += 1
-        pair['protocol'] = data[start_pos:start_pos+protocol_len].decode('utf-8')
-        start_pos += protocol_len
+        # Read metrics
+        metrics, pos = decode_metrics(data, pos)
 
-        # Read pair address
-        pair_addr_len = data[start_pos]
-        start_pos += 1
-        pair['pairAddress'] = data[start_pos:start_pos+pair_addr_len].decode('utf-8')
-        start_pos += pair_addr_len
+        # Convert metrics to expected format
+        if 'price' in metrics:
+            pair['price'] = metrics['price']
+        if 'priceUsd' in metrics:
+            pair['priceUsd'] = metrics['priceUsd']
+        if 'priceChangeH24' in metrics:
+            pair['priceChange'] = {'h24': metrics['priceChangeH24']}
+        if 'liquidityUsd' in metrics:
+            pair['liquidity'] = {'usd': metrics['liquidityUsd']}
+        if 'volumeH24' in metrics:
+            pair['volume'] = {'h24': metrics['volumeH24']}
+        if 'fdv' in metrics:
+            pair['fdv'] = metrics['fdv']
+        if 'timestamp' in metrics and metrics['timestamp'] > 0:
+            pair['pairCreatedAt'] = int(metrics['timestamp'])
+            try:
+                pair['pairCreatedAtFormatted'] = datetime.fromtimestamp(metrics['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            except:
+                pair['pairCreatedAtFormatted'] = "1970-01-01 00:00:00"
 
-        # Read token name
-        token_name_len = data[start_pos]
-        start_pos += 1
-        pair['baseTokenName'] = data[start_pos:start_pos+token_name_len].decode('utf-8')
-        start_pos += token_name_len
-
-        # Read token symbol
-        token_symbol_len = data[start_pos]
-        start_pos += 1
-        pair['baseTokenSymbol'] = data[start_pos:start_pos+token_symbol_len].decode('utf-8')
-        start_pos += token_symbol_len
-
-        # Read token address
-        token_addr_len = data[start_pos]
-        start_pos += 1
-        pair['baseTokenAddress'] = data[start_pos:start_pos+token_addr_len].decode('utf-8')
-        start_pos += token_addr_len
-
-        # Read prices and metrics (packed as doubles)
-        metrics = struct.unpack('8d', data[start_pos:start_pos+64])
-        pair['price'] = metrics[0]
-        pair['priceUsd'] = metrics[1]
-        pair['priceChange'] = {'h24': metrics[2]}
-        pair['liquidity'] = {'usd': metrics[3]}
-        pair['volume'] = {'h24': metrics[4]}
-        pair['fdv'] = metrics[5]
-
-        # Read timestamps
-        pair['pairCreatedAt'] = int(metrics[6])
-        pair['pairCreatedAtFormatted'] = datetime.fromtimestamp(metrics[6]).strftime('%Y-%m-%d %H:%M:%S')
-
-        return pair, start_pos + 64
+        return pair
     except Exception as e:
         if DEBUG:
             logger.error(f"Error decoding pair: {str(e)}")
-        return None, start_pos
+        return None
 
-def decode_binary_message(binary_data):
+def decode_message(data):
+    """Decode a complete WebSocket message"""
     try:
-        if not binary_data.startswith(b'\x00\n1.3.0\n'):
+        if not data.startswith(b'\x00\n1.3.0\n'):
             return None
 
-        data_start = binary_data.find(b'pairs')
-        if data_start == -1:
+        pairs_start = data.find(b'pairs')
+        if pairs_start == -1:
             return None
 
-        pos = data_start + 5  # Skip "pairs"
+        pos = pairs_start + 5  # Skip "pairs"
         pairs = []
 
-        while pos < len(binary_data):
-            try:
-                pair, new_pos = decode_pair_data(binary_data, pos)
-                if pair:
-                    pairs.append(pair)
-                pos = new_pos
-            except:
-                break
+        while pos < len(data):
+            # Look for valid pair data
+            pair = decode_pair(data[pos:pos+512])  # Use fixed chunk size
+            if pair and any(pair.values()):  # Only add pairs with actual data
+                pairs.append(pair)
+            pos += 512
 
-        return {
-            "type": "pairs",
-            "pairs": pairs
-        }
+        return {"type": "pairs", "pairs": pairs} if pairs else None
+
     except Exception as e:
         if DEBUG:
-            logger.error(f"Error decoding binary message: {str(e)}")
+            logger.error(f"Error decoding message: {str(e)}")
         return None
 
 async def connect_to_dexscreener():
@@ -128,68 +151,41 @@ async def connect_to_dexscreener():
 
     ssl_context = ssl.create_default_context()
 
-    try:
-        if DEBUG:
-            logger.info(f"Attempting to connect to {uri}")
+    async with websockets.connect(
+        uri,
+        extra_headers=headers,
+        ssl=ssl_context,
+        max_size=None,
+    ) as websocket:
+        while True:
+            try:
+                message = await websocket.recv()
 
-        async with websockets.connect(
-            uri,
-            extra_headers=headers,
-            ssl=ssl_context,
-            max_size=None,
-        ) as websocket:
-            if DEBUG:
-                logger.info("Successfully connected to DexScreener WebSocket")
-
-            while True:
-                try:
-                    message = await websocket.recv()
-
-                    if DEBUG:
-                        if isinstance(message, bytes):
-                            logger.info(f"Received binary message ({len(message)} bytes)")
-
-                    # Handle ping messages
-                    if message == "ping":
-                        if DEBUG:
-                            logger.info("Received ping, sending pong")
-                        await websocket.send("pong")
-                        continue
-
-                    # Handle binary messages
-                    if isinstance(message, bytes):
-                        data = decode_binary_message(message)
-                        if data and data.get('pairs'):
-                            print(json.dumps(data, indent=2))
-
-                except websockets.exceptions.ConnectionClosed:
-                    if DEBUG:
-                        logger.warning("Connection closed")
-                    break
-                except Exception as e:
-                    if DEBUG:
-                        logger.error(f"Error: {str(e)}")
+                # Handle ping-pong
+                if message == "ping":
+                    await websocket.send("pong")
                     continue
 
-    except websockets.exceptions.InvalidStatusCode as e:
-        if DEBUG:
-            logger.error(f"Failed to connect. Status code: {e.status_code}")
-    except Exception as e:
-        if DEBUG:
-            logger.error(f"An error occurred: {str(e)}")
-        raise
+                # Handle binary messages
+                if isinstance(message, bytes):
+                    data = decode_message(message)
+                    if data and 'pairs' in data:
+                        print(json.dumps(data, indent=None))
+
+            except websockets.exceptions.ConnectionClosed:
+                break
+            except Exception as e:
+                if DEBUG:
+                    logger.error(f"Error: {str(e)}")
+                continue
 
 async def main():
     while True:
         try:
-            if DEBUG:
-                logger.info("Starting connection")
             await connect_to_dexscreener()
-        except Exception as e:
-            if DEBUG:
-                logger.error(f"Connection failed: {str(e)}")
-            logger.info("Reconnecting in 1 second...")
+        except Exception:
             await asyncio.sleep(1)
+            continue
 
 if __name__ == "__main__":
     asyncio.run(main())
