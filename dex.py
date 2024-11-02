@@ -3,11 +3,9 @@ import websockets
 import json
 import ssl
 import logging
-import base64
-import os
-import struct
 from datetime import datetime
 import urllib.parse
+import struct
 
 DEBUG = True
 
@@ -17,65 +15,85 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def decode_latest_block(data):
+def decode_pair_data(data, start_pos):
     try:
-        # Skip header
-        pos = data.find(b'latestBlock') + len(b'latestBlock')
-        # Next 16 bytes contain two double values
-        block_num, timestamp = struct.unpack('dd', data[pos:pos+16])
-        return {
-            "type": "latestBlock",
-            "blockNumber": block_num,
-            "timestamp": timestamp
-        }
+        pair = {}
+
+        # Read chain
+        chain_len = data[start_pos]
+        start_pos += 1
+        pair['chain'] = data[start_pos:start_pos+chain_len].decode('utf-8')
+        start_pos += chain_len
+
+        # Read protocol
+        protocol_len = data[start_pos]
+        start_pos += 1
+        pair['protocol'] = data[start_pos:start_pos+protocol_len].decode('utf-8')
+        start_pos += protocol_len
+
+        # Read pair address
+        pair_addr_len = data[start_pos]
+        start_pos += 1
+        pair['pairAddress'] = data[start_pos:start_pos+pair_addr_len].decode('utf-8')
+        start_pos += pair_addr_len
+
+        # Read token name
+        token_name_len = data[start_pos]
+        start_pos += 1
+        pair['baseTokenName'] = data[start_pos:start_pos+token_name_len].decode('utf-8')
+        start_pos += token_name_len
+
+        # Read token symbol
+        token_symbol_len = data[start_pos]
+        start_pos += 1
+        pair['baseTokenSymbol'] = data[start_pos:start_pos+token_symbol_len].decode('utf-8')
+        start_pos += token_symbol_len
+
+        # Read token address
+        token_addr_len = data[start_pos]
+        start_pos += 1
+        pair['baseTokenAddress'] = data[start_pos:start_pos+token_addr_len].decode('utf-8')
+        start_pos += token_addr_len
+
+        # Read prices and metrics (packed as doubles)
+        metrics = struct.unpack('8d', data[start_pos:start_pos+64])
+        pair['price'] = metrics[0]
+        pair['priceUsd'] = metrics[1]
+        pair['priceChange'] = {'h24': metrics[2]}
+        pair['liquidity'] = {'usd': metrics[3]}
+        pair['volume'] = {'h24': metrics[4]}
+        pair['fdv'] = metrics[5]
+
+        # Read timestamps
+        pair['pairCreatedAt'] = int(metrics[6])
+        pair['pairCreatedAtFormatted'] = datetime.fromtimestamp(metrics[6]).strftime('%Y-%m-%d %H:%M:%S')
+
+        return pair, start_pos + 64
     except Exception as e:
         if DEBUG:
-            logger.error(f"Error decoding latest block: {str(e)}")
-        return None
+            logger.error(f"Error decoding pair: {str(e)}")
+        return None, start_pos
 
-def decode_pairs(data):
+def decode_binary_message(binary_data):
     try:
+        if not binary_data.startswith(b'\x00\n1.3.0\n'):
+            return None
+
+        data_start = binary_data.find(b'pairs')
+        if data_start == -1:
+            return None
+
+        pos = data_start + 5  # Skip "pairs"
         pairs = []
-        pos = data.find(b'pairs') + len(b'pairs')
-        
-        # First 8 doubles are metrics
-        metrics = struct.unpack('8d', data[pos:pos+64])
-        pos += 64
 
-        while pos < len(data):
-            # Read length of chain
-            chain_len = data[pos]
-            pos += 1
-            if chain_len == 0:
+        while pos < len(binary_data):
+            try:
+                pair, new_pos = decode_pair_data(binary_data, pos)
+                if pair:
+                    pairs.append(pair)
+                pos = new_pos
+            except:
                 break
-
-            # Read chain
-            chain = data[pos:pos+chain_len].decode('utf-8')
-            pos += chain_len
-
-            # Read length of protocol
-            protocol_len = data[pos]
-            pos += 1
-            if protocol_len == 0:
-                break
-
-            # Read protocol
-            protocol = data[pos:pos+protocol_len].decode('utf-8')
-            pos += protocol_len
-
-            pair = {
-                "chain": chain,
-                "protocol": protocol,
-                "metrics": {
-                    "price": metrics[0],
-                    "priceChange": metrics[1],
-                    "liquidity": metrics[2],
-                    "volume": metrics[3],
-                    "txns": metrics[4],
-                    "score": metrics[5]
-                }
-            }
-            pairs.append(pair)
 
         return {
             "type": "pairs",
@@ -83,7 +101,7 @@ def decode_pairs(data):
         }
     except Exception as e:
         if DEBUG:
-            logger.error(f"Error decoding pairs: {str(e)}")
+            logger.error(f"Error decoding binary message: {str(e)}")
         return None
 
 async def connect_to_dexscreener():
@@ -94,9 +112,7 @@ async def connect_to_dexscreener():
         "filters[chainIds][0]": "solana"
     }
     uri = f"{base_uri}?{urllib.parse.urlencode(params)}"
-    
-    ws_key = base64.b64encode(os.urandom(16)).decode()
-    
+
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:132.0) Gecko/20100101 Firefox/132.0',
         'Accept': '*/*',
@@ -104,7 +120,6 @@ async def connect_to_dexscreener():
         'Accept-Encoding': 'gzip, deflate, br',
         'Sec-WebSocket-Version': '13',
         'Origin': 'https://dexscreener.com',
-        'Sec-WebSocket-Key': ws_key,
         'Connection': 'Upgrade',
         'Pragma': 'no-cache',
         'Cache-Control': 'no-cache',
@@ -116,7 +131,7 @@ async def connect_to_dexscreener():
     try:
         if DEBUG:
             logger.info(f"Attempting to connect to {uri}")
-            
+
         async with websockets.connect(
             uri,
             extra_headers=headers,
@@ -125,10 +140,14 @@ async def connect_to_dexscreener():
         ) as websocket:
             if DEBUG:
                 logger.info("Successfully connected to DexScreener WebSocket")
-            
+
             while True:
                 try:
                     message = await websocket.recv()
+
+                    if DEBUG:
+                        if isinstance(message, bytes):
+                            logger.info(f"Received binary message ({len(message)} bytes)")
 
                     # Handle ping messages
                     if message == "ping":
@@ -139,22 +158,10 @@ async def connect_to_dexscreener():
 
                     # Handle binary messages
                     if isinstance(message, bytes):
-                        # Skip first two bytes (message type and newline)
-                        if not message.startswith(b'\x00\n') and not message.startswith(b'\x02\n'):
-                            continue
+                        data = decode_binary_message(message)
+                        if data and data.get('pairs'):
+                            print(json.dumps(data, indent=2))
 
-                        # Skip version string
-                        pos = message.find(b'\n', 2) + 1
-                        
-                        if b'latestBlock' in message:
-                            data = decode_latest_block(message[pos:])
-                            if data:
-                                print(json.dumps(data, indent=None))
-                        elif b'pairs' in message:
-                            data = decode_pairs(message[pos:])
-                            if data:
-                                print(json.dumps(data, indent=None))
-                    
                 except websockets.exceptions.ConnectionClosed:
                     if DEBUG:
                         logger.warning("Connection closed")
