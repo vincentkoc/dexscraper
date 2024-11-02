@@ -6,9 +6,9 @@ import logging
 from datetime import datetime
 import urllib.parse
 import struct
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal, InvalidOperation, ROUND_DOWN
 
-DEBUG = True  # Set to False for production
+DEBUG = False
 
 logging.basicConfig(
     level=logging.INFO if DEBUG else logging.ERROR,
@@ -16,28 +16,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def format_number(value):
-    """Format numbers with appropriate precision"""
+def clean_string(s):
+    """Clean invalid and control characters from strings"""
     try:
-        if not isinstance(value, (int, float)) or value == 0:
+        if not s:
+            return ""
+        # Remove non-printable characters except spaces
+        return ''.join(char for char in s if (32 <= ord(char) < 127) or ord(char) == 9)
+    except:
+        return ""
+
+def is_valid_float(value):
+    """Check if a float value is within reasonable bounds"""
+    try:
+        if not isinstance(value, (int, float)):
+            return False
+        # Filter out unreasonable values
+        return -1e15 < value < 1e15 and str(value) != 'nan' and str(value) != 'inf' and str(value) != '-inf'
+    except:
+        return False
+
+def format_float(value, decimals=8):
+    """Format float with appropriate precision"""
+    try:
+        if not is_valid_float(value):
             return "0"
 
-        # Handle very small numbers
-        if abs(value) < 0.00000001:
-            return f"{value:.12f}".rstrip('0').rstrip('.')
+        # Use fewer decimals for larger numbers
+        if abs(value) >= 1:
+            decimals = min(decimals, max(2, int(8 - len(str(int(abs(value)))))))
 
-        # Handle very large numbers
-        if abs(value) > 1e12:
-            return str(int(value))
-
-        # Handle negative numbers
-        if value < 0:
-            return f"-{format_number(abs(value))}"
-
-        # Handle regular decimal numbers
-        d = Decimal(str(value))
-        return str(d.normalize()).rstrip('0').rstrip('.')
-
+        return f"{value:.{decimals}f}".rstrip('0').rstrip('.')
     except:
         return "0"
 
@@ -48,25 +57,21 @@ def decode_metrics(data, start_pos):
             return {}, start_pos
 
         metrics = {}
-        doubles = struct.unpack('8d', data[start_pos:start_pos+64])
+        values = struct.unpack('8d', data[start_pos:start_pos+64])
 
-        # Only filter out extreme invalid values
-        if -1e308 < doubles[0] < 1e308:
-            metrics['price'] = doubles[0]
-        if -1e308 < doubles[1] < 1e308:
-            metrics['priceUsd'] = doubles[1]
-        if -1e308 < doubles[2] < 1e308:
-            metrics['priceChangeH24'] = doubles[2]
-        if -1e308 < doubles[3] < 1e308:
-            metrics['liquidityUsd'] = doubles[3]
-        if -1e308 < doubles[4] < 1e308:
-            metrics['volumeH24'] = doubles[4]
-        if -1e308 < doubles[5] < 1e308:
-            metrics['fdv'] = doubles[5]
-        if doubles[6] >= 0 and doubles[6] < 1e10:
-            metrics['timestamp'] = doubles[6]
+        # Map metrics to their keys with validation
+        metrics_map = {
+            'price': values[0],
+            'priceUsd': values[1],
+            'priceChangeH24': values[2],
+            'liquidityUsd': values[3],
+            'volumeH24': values[4],
+            'fdv': values[5],
+            'timestamp': values[6]
+        }
 
-        return metrics, start_pos + 64
+        # Only include valid values
+        return {k: v for k, v in metrics_map.items() if is_valid_float(v)}, start_pos + 64
     except:
         return {}, start_pos
 
@@ -93,31 +98,30 @@ def decode_pair(data):
         metrics, pos = decode_metrics(data, pos)
 
         if metrics:
-            if 'price' in metrics:
-                pair['price'] = format_number(metrics['price'])
-            if 'priceUsd' in metrics:
-                pair['priceUsd'] = format_number(metrics['priceUsd'])
-            if 'priceChangeH24' in metrics:
-                pair['priceChange'] = {'h24': format_number(metrics['priceChangeH24'])}
-            if 'liquidityUsd' in metrics:
-                pair['liquidity'] = {'usd': format_number(metrics['liquidityUsd'])}
-            if 'volumeH24' in metrics:
-                pair['volume'] = {'h24': format_number(metrics['volumeH24'])}
-            if 'fdv' in metrics:
-                pair['fdv'] = format_number(metrics['fdv'])
+            pair['price'] = format_float(metrics.get('price', 0))
+            pair['priceUsd'] = format_float(metrics.get('priceUsd', 0))
+            pair['priceChange'] = {'h24': format_float(metrics.get('priceChangeH24', 0))}
+            pair['liquidity'] = {'usd': format_float(metrics.get('liquidityUsd', 0))}
+            pair['volume'] = {'h24': format_float(metrics.get('volumeH24', 0))}
+            pair['fdv'] = format_float(metrics.get('fdv', 0))
 
-            if 'timestamp' in metrics:
+            if 'timestamp' in metrics and 0 <= metrics['timestamp'] < 4102444800:  # Valid timestamp range
                 pair['pairCreatedAt'] = int(metrics['timestamp'])
                 try:
                     pair['pairCreatedAtFormatted'] = datetime.fromtimestamp(pair['pairCreatedAt']).strftime('%Y-%m-%d %H:%M:%S')
                 except:
                     pair['pairCreatedAtFormatted'] = "1970-01-01 00:00:00"
+            else:
+                pair['pairCreatedAt'] = 0
+                pair['pairCreatedAtFormatted'] = "1970-01-01 00:00:00"
 
         # Only return pairs with valid data
-        if any(key in pair for key in ['price', 'priceUsd', 'volume', 'liquidity']) and any(pair.values()):
+        if len(pair) > 2 and any(v != "0" for v in [pair.get('price'), pair.get('priceUsd'),
+            pair.get('volume', {}).get('h24', "0"), pair.get('liquidity', {}).get('usd', "0")]):
             return pair
 
         return None
+
     except Exception as e:
         if DEBUG:
             logger.error(f"Error decoding pair: {str(e)}")
@@ -164,21 +168,16 @@ async def connect_to_dexscreener():
 
                         if message == "ping":
                             await websocket.send("pong")
-                            if DEBUG:
-                                logger.info("Sent pong response")
                             continue
 
                         if isinstance(message, bytes):
-                            # Skip version check
                             if not message.startswith(b'\x00\n1.3.0\n'):
                                 continue
 
-                            # Find pairs data
                             pairs_start = message.find(b'pairs')
                             if pairs_start == -1:
                                 continue
 
-                            # Process pairs in chunks
                             pairs = []
                             pos = pairs_start + 5
                             while pos < len(message):
@@ -201,7 +200,6 @@ async def connect_to_dexscreener():
             if DEBUG:
                 logger.error(f"Connection error: {str(e)}")
             await asyncio.sleep(1)
-            continue
 
 async def main():
     while True:
