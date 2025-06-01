@@ -46,7 +46,7 @@ pip install -r requirements.txt
 Run the client with:
 
 ```bash
-python main.py
+python dex.py
 ```
 
 The client will:
