@@ -93,7 +93,12 @@ def decode_pair(data):
             str_len = data[pos]
             pos += 1
 
-            if str_len == 0 or str_len > 100 or pos + str_len > len(data):
+            # If the declared length looks unreasonable or extends past the
+            # available data, stop parsing this pair to avoid misalignment.
+            if str_len > 100 or pos + str_len > len(data):
+                break
+
+            if str_len == 0:
                 continue
 
             value = clean_string(data[pos:pos+str_len].decode('utf-8', errors='ignore'))
