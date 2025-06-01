@@ -146,4 +146,4 @@ GPL-v3
 ## Disclaimer
 
 This is an unofficial client for DexScreener's WebSocket API. Use at your own risk and ensure compliance with DexScreener's terms of service.
-This is not affiliated with DexScreener in any-way.
+This is not affiliated with DexScreener in any way.
