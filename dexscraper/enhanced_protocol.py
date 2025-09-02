@@ -205,8 +205,8 @@ class EnhancedProtocolParser:
                     protocol = word.lower()
 
             # Extract token symbols and names
-            token_symbol = ""
-            token_name = ""
+            token_symbol = ""  # nosec B105
+            token_name = ""  # nosec B105
 
             # Look for token-like strings
             for word in words:
@@ -255,10 +255,10 @@ class EnhancedProtocolParser:
             return TradingPair(
                 chain=chain,
                 protocol=protocol,
-                pair_address="",  # We'd need to extract this from addresses
+                pair_address="",  # nosec B106
                 base_token_name=token_name or "Unknown Token",
                 base_token_symbol=token_symbol or "",
-                base_token_address="",
+                base_token_address="",  # nosec B106
                 price_data=price_data,
                 volume_data=volume_data,
                 liquidity_data=liquidity_data,

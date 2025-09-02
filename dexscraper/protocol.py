@@ -212,11 +212,11 @@ def decode_pair_from_text(data: bytes) -> Optional[TradingPair]:
 
         # Initialize fields
         chain = "solana"  # Default for this scraper
-        protocol = ""
-        pair_address = ""
-        token_name = ""
-        token_symbol = ""
-        token_address = ""
+        protocol = ""  # nosec B105
+        pair_address = ""  # nosec B105
+        token_name = ""  # nosec B105
+        token_symbol = ""  # nosec B105
+        token_address = ""  # nosec B105
 
         # Extract data using pattern matching
         for word in words:
@@ -306,11 +306,11 @@ def parse_variable_length(data: bytes) -> List[TradingPair]:
                 continue
 
             # Try to identify components
-            protocol = ""
-            pair_address = ""
-            token_name = ""
-            token_symbol = ""
-            token_address = ""
+            protocol = ""  # nosec B105
+            pair_address = ""  # nosec B105
+            token_name = ""  # nosec B105
+            token_symbol = ""  # nosec B105
+            token_address = ""  # nosec B105
 
             for word in words:
                 # Potential protocol names
