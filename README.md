@@ -1,7 +1,7 @@
 # Dexscraper: 👻 DexScreener Real-time WebSocket Python Package
 
 [![PyPI version](https://badge.fury.io/py/dexscraper.svg)](https://badge.fury.io/py/dexscraper)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![CI](https://github.com/vincentkoc/dexscraper/actions/workflows/ci.yml/badge.svg)](https://github.com/vincentkoc/dexscraper/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/vincentkoc/dexscraper/branch/main/graph/badge.svg)](https://codecov.io/gh/vincentkoc/dexscraper)
@@ -56,7 +56,7 @@ pip install -e .[dev]
 ```
 
 ### Requirements
-- **Python 3.8+**
+- **Python 3.9+**
 - **Core**: `websockets>=10.0`, `cloudscraper>=1.2.60`
 - **CLI**: `rich` (optional, for enhanced terminal interface)
 - **Dev**: `pytest`, `black`, `mypy`, `pre-commit`
