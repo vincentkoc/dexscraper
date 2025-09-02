@@ -224,13 +224,24 @@ class DexScraper:
             return None
         
         try:
-            # Wait for first message
+            # DexScreener typically sends two messages:
+            # 1. Protocol handshake (small message)
+            # 2. Actual pairs data (large message)
             timeout = 30
-            message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
             
-            if isinstance(message, bytes):
-                pairs = parse_message(message)
-                return pairs
+            for attempt in range(3):  # Try up to 3 messages
+                message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
+                
+                if isinstance(message, bytes):
+                    logger.debug(f"Received message {attempt + 1}: {len(message)} bytes")
+                    pairs = parse_message(message)
+                    if pairs:  # If we got valid pairs, return them
+                        logger.debug(f"Successfully parsed {len(pairs)} pairs")
+                        return pairs
+                    # If no pairs, continue to next message
+                elif message == "ping":
+                    await websocket.send("pong")
+                    continue
         
         except asyncio.TimeoutError:
             logger.error("Timeout waiting for data")
