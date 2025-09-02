@@ -319,6 +319,19 @@ def parse_variable_length(data: bytes) -> List[TradingPair]:
 def parse_message(message: bytes) -> List[TradingPair]:
     """Parse a complete WebSocket message and extract trading pairs."""
     try:
+        # Try enhanced parsing first for real numeric data
+        try:
+            from .enhanced_protocol import parse_message_enhanced
+            pairs = parse_message_enhanced(message)
+            if pairs:
+                logger.debug(f"Enhanced parser extracted {len(pairs)} pairs with real data")
+                return pairs
+        except ImportError:
+            logger.debug("Enhanced parser not available, using fallback")
+        except Exception as e:
+            logger.debug(f"Enhanced parser failed: {e}, falling back to basic parsing")
+        
+        # Original parsing logic as fallback
         if not message.startswith(b'\x00\n1.3.0\n'):
             return []
 
