@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Pytest configuration and fixtures for dexscraper tests."""
 
-import pytest
 import asyncio
 from typing import Generator
+
+import pytest
 
 
 @pytest.fixture
@@ -26,7 +27,7 @@ def sample_token_data():
         "liquidity": 50000.0,
         "market_cap": 5000000.0,
         "confidence_score": 0.85,
-        "field_count": 8
+        "field_count": 8,
     }
 
 
@@ -40,5 +41,5 @@ def sample_ohlc_data():
         "low": 0.000119,
         "close": 0.000125,
         "volume": 1000000.50,
-        "trades": 150
+        "trades": 150,
     }

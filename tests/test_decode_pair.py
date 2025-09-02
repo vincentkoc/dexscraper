@@ -1,14 +1,14 @@
+import os
 import sys
 import types
-import os
 
 # Ensure the project root is on the import path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Provide a minimal stub for the websockets package so dex can be imported
-sys.modules.setdefault('websockets', types.ModuleType('websockets'))
+sys.modules.setdefault("websockets", types.ModuleType("websockets"))
 # Stub out the exceptions attribute used in dex
-sys.modules['websockets'].exceptions = types.SimpleNamespace(ConnectionClosed=Exception)
+sys.modules["websockets"].exceptions = types.SimpleNamespace(ConnectionClosed=Exception)
 
 from dex import clean_string, decode_pair
 
@@ -31,5 +31,3 @@ def test_decode_pair_invalid_length_returns_none():
     # Declared length exceeds remaining bytes
     data_short = b"\x0ahello"
     assert decode_pair(data_short) is None
-
-
