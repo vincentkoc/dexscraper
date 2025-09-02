@@ -411,3 +411,279 @@ class ExtractedTokenBatch:
         result = output.getvalue()
         output.close()
         return result
+
+
+class TradingViewExporter:
+    """Export data in TradingView format."""
+    
+    @staticmethod
+    def format_ohlcv(ohlc_data: List[OHLCData]) -> str:
+        """Format OHLC data for TradingView charting library.
+        
+        Args:
+            ohlc_data: List of OHLC data points
+            
+        Returns:
+            TradingView formatted JSON string
+        """
+        import json
+        
+        tv_data = {
+            "s": "ok",
+            "t": [int(ohlc.timestamp) for ohlc in ohlc_data],
+            "o": [ohlc.open for ohlc in ohlc_data],
+            "h": [ohlc.high for ohlc in ohlc_data],
+            "l": [ohlc.low for ohlc in ohlc_data],
+            "c": [ohlc.close for ohlc in ohlc_data],
+            "v": [ohlc.volume for ohlc in ohlc_data]
+        }
+        
+        return json.dumps(tv_data, separators=(',', ':'))
+
+
+class BinanceExporter:
+    """Export data in Binance API format."""
+    
+    @staticmethod
+    def format_klines(ohlc_data: List[OHLCData]) -> str:
+        """Format OHLC data like Binance klines API.
+        
+        Args:
+            ohlc_data: List of OHLC data points
+            
+        Returns:
+            Binance klines formatted JSON string
+        """
+        import json
+        
+        klines = []
+        for ohlc in ohlc_data:
+            kline = [
+                int(ohlc.timestamp * 1000),  # Open time (milliseconds)
+                f"{ohlc.open:.8f}",  # Open price
+                f"{ohlc.high:.8f}",  # High price
+                f"{ohlc.low:.8f}",   # Low price
+                f"{ohlc.close:.8f}", # Close price
+                f"{ohlc.volume:.8f}", # Volume
+                int(ohlc.timestamp * 1000) + 60000,  # Close time (assume 1m candles)
+                f"{ohlc.volume:.8f}",  # Quote asset volume
+                ohlc.trades if ohlc.trades else 1,  # Number of trades
+                f"{ohlc.volume * 0.6:.8f}",  # Taker buy base asset volume
+                f"{ohlc.volume * 0.6:.8f}",  # Taker buy quote asset volume
+                "0"  # Unused field
+            ]
+            klines.append(kline)
+        
+        return json.dumps(klines, separators=(',', ':'))
+
+
+class CoinGeckoExporter:
+    """Export data in CoinGecko API format."""
+    
+    @staticmethod
+    def format_market_data(tokens: List[TokenProfile]) -> str:
+        """Format token data like CoinGecko market data API.
+        
+        Args:
+            tokens: List of token profiles
+            
+        Returns:
+            CoinGecko formatted JSON string
+        """
+        import json
+        
+        market_data = []
+        for i, token in enumerate(tokens):
+            if not token.price:
+                continue
+                
+            entry = {
+                "id": f"token-{i}",
+                "symbol": token.symbol or f"token{i}",
+                "name": token.token_name or token.symbol or f"Token {i}",
+                "current_price": token.price,
+                "market_cap": token.market_cap,
+                "total_volume": token.volume_24h,
+                "price_change_percentage_24h": token.change_24h,
+                "price_change_percentage_1h_in_currency": token.change_1h,
+                "price_change_percentage_24h_in_currency": token.change_24h,
+                "market_cap_rank": i + 1,
+                "circulating_supply": None,
+                "total_supply": None,
+                "max_supply": None,
+                "ath": token.price * 1.2,  # Estimate ATH
+                "ath_change_percentage": -16.67,  # Estimate
+                "last_updated": datetime.fromtimestamp(token.timestamp or time.time()).isoformat()
+            }
+            market_data.append(entry)
+        
+        return json.dumps(market_data, separators=(',', ':'), default=str)
+
+
+class PancakeSwapExporter:
+    """Export data in PancakeSwap format."""
+    
+    @staticmethod
+    def format_tokens(tokens: List[TokenProfile]) -> str:
+        """Format token data for PancakeSwap-style APIs.
+        
+        Args:
+            tokens: List of token profiles
+            
+        Returns:
+            PancakeSwap formatted JSON string
+        """
+        import json
+        
+        pancake_data = {}
+        for token in tokens:
+            if not token.token_address or not token.price:
+                continue
+                
+            pancake_data[token.token_address] = {
+                "name": token.token_name or token.symbol,
+                "symbol": token.symbol,
+                "price": str(token.price),
+                "price_BNB": str(token.price * 0.002),  # Estimate BNB price
+                "updated_at": int(token.timestamp or time.time())
+            }
+        
+        return json.dumps(pancake_data, separators=(',', ':'))
+
+
+class ExcelExporter:
+    """Export data to Excel-compatible formats."""
+    
+    @staticmethod
+    def format_tokens_csv(tokens: List[TokenProfile]) -> str:
+        """Format tokens for Excel import.
+        
+        Args:
+            tokens: List of token profiles
+            
+        Returns:
+            Excel-compatible CSV string
+        """
+        from io import StringIO
+        import csv
+        
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Header
+        writer.writerow([
+            "Symbol", "Name", "Price", "Volume_24h", "Market_Cap", 
+            "Transactions_24h", "Makers", "Liquidity", "Change_24h",
+            "Confidence", "Website", "Twitter", "Timestamp"
+        ])
+        
+        # Data rows
+        for token in tokens:
+            writer.writerow([
+                token.symbol or "",
+                token.token_name or "",
+                token.price or "",
+                token.volume_24h or "",
+                token.market_cap or "",
+                token.txns_24h or "",
+                token.makers or "",
+                token.liquidity or "",
+                token.change_24h or "",
+                token.confidence_score,
+                token.website or "",
+                token.twitter or "",
+                format_timestamp(token.timestamp)
+            ])
+        
+        result = output.getvalue()
+        output.close()
+        return result
+
+
+class JsonLinesExporter:
+    """Export data in JSON Lines format."""
+    
+    @staticmethod
+    def format_tokens(tokens: List[TokenProfile]) -> str:
+        """Format tokens as JSON Lines (JSONL).
+        
+        Args:
+            tokens: List of token profiles
+            
+        Returns:
+            JSON Lines formatted string
+        """
+        lines = []
+        for token in tokens:
+            lines.append(token.to_json())
+        return '\n'.join(lines)
+    
+    @staticmethod
+    def format_ohlc(ohlc_data: List[OHLCData]) -> str:
+        """Format OHLC data as JSON Lines.
+        
+        Args:
+            ohlc_data: List of OHLC data points
+            
+        Returns:
+            JSON Lines formatted string
+        """
+        import json
+        
+        lines = []
+        for ohlc in ohlc_data:
+            lines.append(json.dumps(ohlc.to_dict(), separators=(',', ':'), default=str))
+        return '\n'.join(lines)
+
+
+class PrometheusExporter:
+    """Export metrics in Prometheus format."""
+    
+    @staticmethod
+    def format_metrics(batch: ExtractedTokenBatch) -> str:
+        """Format batch data as Prometheus metrics.
+        
+        Args:
+            batch: Token batch to export
+            
+        Returns:
+            Prometheus metrics format string
+        """
+        lines = []
+        timestamp_ms = batch.extraction_timestamp * 1000
+        
+        # Batch-level metrics
+        lines.append(f'# HELP dex_tokens_extracted_total Total tokens extracted')
+        lines.append(f'# TYPE dex_tokens_extracted_total counter')
+        lines.append(f'dex_tokens_extracted_total {batch.total_extracted} {timestamp_ms}')
+        
+        lines.append(f'# HELP dex_tokens_high_confidence High confidence tokens extracted')
+        lines.append(f'# TYPE dex_tokens_high_confidence gauge')
+        lines.append(f'dex_tokens_high_confidence {batch.high_confidence_count} {timestamp_ms}')
+        
+        # Token-level metrics
+        lines.append(f'# HELP dex_token_price Token price in USD')
+        lines.append(f'# TYPE dex_token_price gauge')
+        
+        lines.append(f'# HELP dex_token_volume_24h Token 24h volume in USD')
+        lines.append(f'# TYPE dex_token_volume_24h gauge')
+        
+        for token in batch.get_top_tokens(10):
+            symbol = token.symbol or f'token_{batch.tokens.index(token)}'
+            
+            if token.price:
+                lines.append(f'dex_token_price{{symbol="{symbol}"}} {token.price} {timestamp_ms}')
+            
+            if token.volume_24h:
+                lines.append(f'dex_token_volume_24h{{symbol="{symbol}"}} {token.volume_24h} {timestamp_ms}')
+        
+        return '\n'.join(lines) + '\n'
+
+
+def format_timestamp(timestamp: Optional[int]) -> str:
+    """Format timestamp for display."""
+    if timestamp is None:
+        return ""
+    
+    dt = datetime.fromtimestamp(timestamp)
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
