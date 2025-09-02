@@ -85,6 +85,8 @@ extend-exclude = '''
   | \.venv
   | build
   | dist
+  # auto-generated files
+  | dexscraper/_version\.py
 )/
 '''
 
@@ -124,6 +126,9 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+exclude = [
+    "dexscraper/_version.py"
+]
 
 [[tool.mypy.overrides]]
 module = [
