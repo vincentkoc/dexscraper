@@ -1,9 +1,11 @@
-"""Command line interface for dexscraper."""
+"""Command line interface for dexscraper - Claude Code inspired UX."""
 
 import asyncio
 import argparse
 import sys
 import time
+import os
+from datetime import datetime
 from typing import List, Optional
 
 try:
@@ -13,6 +15,12 @@ try:
     from rich.text import Text
     from rich.layout import Layout
     from rich.panel import Panel
+    from rich.columns import Columns
+    from rich.align import Align
+    from rich.prompt import Prompt, Confirm
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+    from rich.rule import Rule
+    from rich.padding import Padding
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -22,78 +30,473 @@ from .models import TradingPair, TokenProfile, ExtractedTokenBatch
 from .config import (ScrapingConfig, PresetConfigs, Chain, Timeframe, RankBy, Order, 
                     DEX, Filters)
 
+# ASCII Ghost Art for loading screen
+GHOST_ASCII = """
+[dim white]                    ░░░░░░░░░░░░░░░░░░░░[/dim white]
+[dim white]                ░░[/dim white][bold magenta]██[/bold magenta][dim white]░░[/dim white][bold magenta]██[/bold magenta][dim white]░░[/dim white][bold magenta]██[/bold magenta][dim white]░░[/dim white][bold magenta]██[/bold magenta][dim white]░░[/dim white]
+[dim white]              ░░[/dim white][bold white]████[/bold white][dim white]░░[/dim white][bold white]████[/bold white][dim white]░░[/dim white][bold white]████[/bold white][dim white]░░░░[/dim white]
+[dim white]            ░░[/dim white][bold white]██████████████████[/bold white][dim white]░░░░[/dim white]
+[dim white]          ░░[/dim white][bold white]██[/bold white][bold bright_black]██[/bold bright_black][bold white]████[/bold white][bold bright_black]██[/bold bright_black][bold white]██[/bold white][bold bright_black]██[/bold bright_black][bold white]████[/bold white][dim white]░░░░[/dim white]
+[dim white]          ░░[/dim white][bold white]██████████████████[/bold white][dim white]░░░░[/dim white]
+[dim white]        ░░[/dim white][bold white]████[/bold white][bold magenta]██[/bold magenta][bold white]██████[/bold white][bold magenta]██[/bold magenta][bold white]████[/bold white][dim white]░░░░[/dim white]
+[dim white]        ░░[/dim white][bold white]██████████████████[/bold white][dim white]░░░░[/dim white]
+[dim white]      ░░[/dim white][bold white]████████[/bold white][bold magenta]██[/bold magenta][bold white]██[/bold white][bold magenta]██[/bold magenta][bold white]██████[/bold white][dim white]░░░░[/dim white]
+[dim white]      ░░[/dim white][bold white]██████████████████[/bold white][dim white]░░░░[/dim white]
+[dim white]    ░░[/dim white][bold white]██████████████████[/bold white][dim white]░░░░░░[/dim white]
+[dim white]    ░░[/dim white][bold white]██████████████████[/bold white][dim white]░░░░░░[/dim white]
+[dim white]  ░░[/dim white][bold white]████████████████████[/bold white][dim white]░░░░░░[/dim white]
 
-class RichDisplay:
-    """Rich display manager for pretty terminal output."""
+[bold bright_magenta]      👻 DexScraper Ghost Protocol[/bold bright_magenta]
+[dim bright_white]      Haunting the blockchain...[/dim bright_white]
+"""
+
+class SlickCLI:
+    """Slick, dark terminal interface with Claude Code-inspired UX."""
     
-    def __init__(self, console: Console):
-        self.console = console
-        self.extraction_count = 0
-        self.total_tokens = 0
-        self.high_confidence_tokens = 0
-        self.last_update = time.time()
+    def __init__(self):
+        self.console = Console()
+        self.scraper = None
+        self.session_start = time.time()
     
-    def create_token_table(self, batch: ExtractedTokenBatch) -> Table:
-        """Create a rich table displaying token data."""
-        table = Table(
-            title="🚀 Live Token Data",
-            title_style="bold magenta"
+    def clear_screen(self):
+        """Clear terminal screen."""
+        self.console.clear()
+    
+    def show_ghost_loading(self):
+        """Show ASCII ghost with loading animation."""
+        self.clear_screen()
+        
+        with self.console.status("[primary]Initializing Ghost Protocol...", spinner="dots"):
+            time.sleep(2)
+            
+        self.console.print(Align.center(GHOST_ASCII))
+        time.sleep(1.5)
+    
+    def show_main_menu(self):
+        """Display main menu with options."""
+        self.clear_screen()
+        
+        # Header
+        self.console.print(Rule("[bright_magenta]👻 DexScraper Ghost Protocol[/bright_magenta]", style="bright_magenta"))
+        self.console.print()
+        
+        # Menu panel
+        menu_text = Text()
+        menu_text.append("🚀 ", style="bright_magenta")
+        menu_text.append("Choose your destiny:\n\n", style="bright_white")
+        
+        options = [
+            ("1", "Stream to Terminal", "📺 Live market data stream"),
+            ("2", "Export to File", "💾 Save data to file"),  
+            ("3", "Real-time Monitor", "⚡ Continuous monitoring"),
+            ("4", "Configuration", "⚙️  Adjust settings"),
+            ("5", "Exit", "👻 Fade away...")
+        ]
+        
+        for key, title, desc in options:
+            menu_text.append(f"  {key}. ", style="bright_magenta")
+            menu_text.append(f"{title}\n", style="bright_white bold")
+            menu_text.append(f"     {desc}\n\n", style="bright_black")
+        
+        panel = Panel(
+            Align.center(menu_text),
+            border_style="bright_magenta",
+            title="[bright_white bold]Main Menu[/bright_white bold]",
+            title_align="center"
         )
         
-        table.add_column("Symbol", style="cyan", no_wrap=True)
-        table.add_column("Price", style="green", justify="right")
-        table.add_column("Volume 24h", style="yellow", justify="right")
-        table.add_column("Txns", style="blue", justify="right")
-        table.add_column("Makers", style="magenta", justify="right")
-        table.add_column("Confidence", style="red", justify="right")
+        self.console.print(Padding(panel, (1, 0)))
         
+        return Prompt.ask(
+            "\n[bright_magenta]→[/bright_magenta] Select option",
+            choices=["1", "2", "3", "4", "5"],
+            default="1"
+        )
+    
+    async def extract_data(self):
+        """Extract token data with progress animation."""
+        if not self.scraper:
+            self.scraper = DexScraper(debug=False)
+            
+        with Progress(
+            SpinnerColumn("dots"),
+            TextColumn("[bright_magenta]Extracting ghost data..."),
+            console=self.console
+        ) as progress:
+            progress.add_task("Extraction", total=None)
+            batch = await self.scraper.extract_token_data()
+            
+        return batch
+    
+    def create_slick_token_table(self, batch: ExtractedTokenBatch) -> Table:
+        """Create dark-themed token table with proper names."""
+        table = Table(
+            title="[bright_magenta]👻 Haunted Market Data[/bright_magenta]",
+            show_header=True,
+            header_style="bright_magenta bold",
+            border_style="bright_magenta",
+            expand=True,
+            show_lines=False
+        )
+        
+        # Slick columns with standard colors
+        table.add_column("Token", style="bright_white bold", width=16)
+        table.add_column("Price", style="bright_green", justify="right", width=12)
+        table.add_column("Volume", style="bright_blue", justify="right", width=10)
+        table.add_column("Txns", style="bright_yellow", justify="right", width=8)
+        table.add_column("Makers", style="magenta", justify="right", width=8)
+        table.add_column("Conf", style="bright_magenta", justify="center", width=6)
+        
+        # Get tokens with proper names
         top_tokens = batch.get_top_tokens(10)
-        for token in top_tokens:
-            price_str = f"${token.price:.8f}" if token.price else "N/A"
-            volume_str = f"${token.volume_24h:,.0f}" if token.volume_24h else "N/A"
-            txns_str = str(token.txns_24h) if token.txns_24h else "N/A"
-            makers_str = str(token.makers) if token.makers else "N/A"
-            confidence_str = f"{token.confidence_score:.0%}"
+        
+        for i, token in enumerate(top_tokens):
+            # Extract proper token name or use fallback
+            name = self.get_token_display_name(token, i)
+            
+            # Format values with proper styling
+            price = f"${token.price:.6f}" if token.price else "N/A"
+            volume = self.format_large_number(token.volume_24h) if token.volume_24h else "N/A"
+            txns = f"{int(token.txns_24h):,}" if token.txns_24h else "N/A"
+            makers = f"{int(token.makers):,}" if token.makers else "N/A"
+            
+            # Confidence with emoji
+            conf_score = token.confidence_score or 0
+            if conf_score >= 0.8:
+                conf = "⚡"
+            elif conf_score >= 0.6:
+                conf = "⭐"
+            elif conf_score >= 0.4:
+                conf = "🟡"
+            else:
+                conf = "🔴"
+                
+            table.add_row(name, price, volume, txns, makers, conf)
+        
+        return table
+    
+    def get_token_display_name(self, token: TokenProfile, index: int) -> str:
+        """Get a proper display name for the token."""
+        # Use the real token symbol if available
+        if token.symbol and not token.symbol.startswith("TOKEN_"):
+            return token.symbol[:15]
+        
+        # Try to extract real name from metadata if available
+        if hasattr(token, 'metadata') and token.metadata:
+            if 'name' in token.metadata:
+                return token.metadata['name'][:15]
+            if 'symbol' in token.metadata:
+                return token.metadata['symbol'][:15]
+        
+        # Fallback to generic token name if no real symbol found
+        return f"UNKNOWN_{index:02d}"
+    
+    def format_large_number(self, num: float) -> str:
+        """Format large numbers with K, M, B suffixes."""
+        if num >= 1_000_000_000:
+            return f"${num/1_000_000_000:.1f}B"
+        elif num >= 1_000_000:
+            return f"${num/1_000_000:.1f}M"
+        elif num >= 1_000:
+            return f"${num/1_000:.0f}K"
+        else:
+            return f"${num:.0f}"
+    
+    async def stream_mode(self):
+        """Live streaming mode."""
+        self.clear_screen()
+        self.console.print(Rule("[bright_magenta]📺 Live Stream Mode[/bright_magenta]", style="bright_magenta"))
+        self.console.print()
+        
+        try:
+            while True:
+                batch = await self.extract_data()
+                
+                # Clear and show data
+                self.clear_screen()
+                self.console.print(Rule("[bright_magenta]📺 Live Stream Mode[/bright_magenta]", style="bright_magenta"))
+                
+                # Stats header
+                stats = Text()
+                stats.append("👻 ", style="bright_magenta")
+                stats.append(f"Extracted: {batch.total_extracted} | ", style="bright_white")
+                stats.append(f"High Conf: {batch.high_confidence_count} | ", style="bright_green")
+                stats.append(f"Time: {datetime.now().strftime('%H:%M:%S')}", style="bright_blue")
+                
+                self.console.print(Padding(stats, (0, 0, 1, 0)))
+                
+                # Token table
+                table = self.create_slick_token_table(batch)
+                self.console.print(table)
+                
+                self.console.print(f"\n[bright_black]Press Ctrl+C to return to menu...[/muted]")
+                
+                # Wait 5 seconds
+                await asyncio.sleep(5)
+                
+        except KeyboardInterrupt:
+            self.console.print("\n[bright_yellow]Returning to menu...[/warning]")
+            return
+    
+    async def export_mode(self):
+        """File export mode."""
+        self.clear_screen()
+        self.console.print(Rule("[bright_magenta]💾 Export Mode[/bright_magenta]", style="bright_magenta"))
+        self.console.print()
+        
+        # Format selection
+        formats = {
+            "1": ("JSON", "json", "🔧 Raw JSON data"),
+            "2": ("CSV", "csv", "📊 Spreadsheet format"),
+            "3": ("MT5", "csv", "📈 MetaTrader format"),
+            "4": ("OHLCV", "csv", "📉 OHLC with volume"),
+        }
+        
+        self.console.print("[bright_white]Available export formats:\n")
+        for key, (name, ext, desc) in formats.items():
+            self.console.print(f"  [bright_magenta]{key}.[/bright_magenta] [bright_white bold]{name}[/bright_white bold]")
+            self.console.print(f"     [bright_black]{desc}[/bright_black]\n")
+        
+        choice = Prompt.ask(
+            "[bright_magenta]→[/bright_magenta] Select format",
+            choices=list(formats.keys()),
+            default="1"
+        )
+        
+        format_name, ext, _ = formats[choice]
+        filename = f"dexscraper_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{ext}"
+        
+        # Extract and save
+        batch = await self.extract_data()
+        
+        if choice == "1":  # JSON
+            import json
+            data = [token.__dict__ for token in batch.tokens]
+            with open(filename, 'w') as f:
+                json.dump(data, f, indent=2, default=str)
+        elif choice == "2":  # CSV
+            content = batch.to_csv_string("basic")
+            with open(filename, 'w') as f:
+                f.write(content)
+        elif choice == "3":  # MT5
+            ohlc_batch = batch.to_ohlc_batch()
+            content = "\n".join([ohlc.to_mt5_format() for ohlc in ohlc_batch])
+            with open(filename, 'w') as f:
+                f.write(content)
+        elif choice == "4":  # OHLCV
+            content = batch.to_csv_string("ohlcv")
+            with open(filename, 'w') as f:
+                f.write(content)
+        
+        self.console.print(f"\n[bright_green]✓ Exported to: {filename}[/bright_green]")
+        self.console.print(f"[bright_black]File saved in current directory[/bright_black]")
+        
+        input("\nPress Enter to continue...")
+    
+    async def run(self):
+        """Main application loop."""
+        # Show loading screen
+        self.show_ghost_loading()
+        
+        while True:
+            choice = self.show_main_menu()
+            
+            if choice == "1":
+                await self.stream_mode()
+            elif choice == "2":
+                await self.export_mode()
+            elif choice == "3":
+                self.console.print("[bright_yellow]Real-time monitor coming soon![/bright_yellow]")
+                input("Press Enter to continue...")
+            elif choice == "4":
+                self.console.print("[bright_yellow]Configuration coming soon![/bright_yellow]")
+                input("Press Enter to continue...")
+            elif choice == "5":
+                self.console.print(Align.center("[dim white]👻 Fading into the void...[/dim white]"))
+                time.sleep(1)
+                break
+
+
+# Support functions for argument parsing
+            
+            # Row styling based on performance
+            symbol = token.get_display_name()[:10]
+            if conf_score >= 0.9:
+                symbol = f"[bold bright_cyan]{symbol}[/bold bright_cyan]"
+            elif conf_score >= 0.8:
+                symbol = f"[bright_cyan]{symbol}[/bright_cyan]"
+            else:
+                symbol = f"[cyan]{symbol}[/cyan]"
             
             table.add_row(
-                token.get_display_name()[:12],
+                symbol,
                 price_str,
                 volume_str,
                 txns_str,
                 makers_str,
-                confidence_str
+                liquidity_str,
+                change_str,
+                conf_str
             )
         
         return table
     
-    def create_stats_panel(self, batch: ExtractedTokenBatch) -> Panel:
-        """Create statistics panel."""
-        stats_text = Text()
-        stats_text.append("📊 Extraction Statistics\n", style="bold")
-        stats_text.append(f"Total Extracted: {batch.total_extracted}\n")
-        stats_text.append(f"High Confidence: {batch.high_confidence_count}\n")  
-        stats_text.append(f"Complete Profiles: {batch.complete_profiles_count}\n")
-        stats_text.append(f"Extraction #{self.extraction_count}")
+    def create_header_panel(self) -> Panel:
+        """Create sophisticated header with branding."""
         
-        return Panel(stats_text, title="Stats", border_style="blue")
+        header_text = Text()
+        header_text.append("🔷 ", style="bright_blue")
+        header_text.append("DEXSCRAPER", style="bold bright_white")
+        header_text.append(" PRO", style="bold gold1")
+        header_text.append(" 🔷", style="bright_blue")
+        header_text.append("\n")
+        header_text.append("Real-time DeFi Market Intelligence", style="italic bright_blue")
+        
+        return Panel(
+            Align.center(header_text),
+            border_style="gold1",
+            padding=(0, 1)
+        )
+    
+    def create_stats_panel(self, batch: ExtractedTokenBatch) -> Panel:
+        """Create enhanced statistics panel."""
+        
+        # Calculate session metrics
+        session_duration = time.time() - self.session_start
+        extraction_rate = self.extraction_count / max(session_duration / 60, 0.1)  # per minute
+        
+        # Left column - Extraction Stats
+        left_stats = Text()
+        left_stats.append("📊 ", style="bright_blue")
+        left_stats.append("EXTRACTION\n", style="bold bright_white")
+        left_stats.append(f"Total: ", style="bright_white")
+        left_stats.append(f"{batch.total_extracted}", style="bold bright_green")
+        left_stats.append("\n")
+        left_stats.append(f"High Conf: ", style="bright_white")
+        left_stats.append(f"{batch.high_confidence_count}", style="bold gold1")
+        left_stats.append("\n")
+        left_stats.append(f"Complete: ", style="bright_white")
+        left_stats.append(f"{batch.complete_profiles_count}", style="bold bright_blue")
+        
+        # Center column - Session Stats
+        center_stats = Text()
+        center_stats.append("⚡ ", style="gold1")
+        center_stats.append("SESSION\n", style="bold bright_white")
+        center_stats.append(f"Cycle: ", style="bright_white")
+        center_stats.append(f"#{self.extraction_count}", style="bold bright_cyan")
+        center_stats.append("\n")
+        center_stats.append(f"Rate: ", style="bright_white")
+        center_stats.append(f"{extraction_rate:.1f}/min", style="bold bright_yellow")
+        center_stats.append("\n")
+        center_stats.append(f"Uptime: ", style="bright_white")
+        center_stats.append(f"{session_duration:.0f}s", style="bold bright_magenta")
+        
+        # Right column - Market Stats
+        right_stats = Text()
+        right_stats.append("💎 ", style="bright_green")
+        right_stats.append("MARKET\n", style="bold bright_white")
+        
+        # Calculate total volume
+        total_vol = sum(t.volume_24h for t in batch.tokens if t.volume_24h) or 0
+        if total_vol >= 1_000_000:
+            vol_str = f"${total_vol/1_000_000:.1f}M"
+        else:
+            vol_str = f"${total_vol/1_000:.0f}K"
+        
+        right_stats.append(f"Volume: ", style="bright_white")
+        right_stats.append(f"{vol_str}", style="bold bright_green")
+        right_stats.append("\n")
+        
+        # Average confidence
+        avg_conf = sum(t.confidence_score for t in batch.tokens) / max(len(batch.tokens), 1)
+        right_stats.append(f"Avg Conf: ", style="bright_white")
+        right_stats.append(f"{avg_conf:.0%}", style="bold gold1")
+        right_stats.append("\n")
+        
+        # Current time
+        current_time = datetime.now().strftime("%H:%M:%S")
+        right_stats.append(f"Time: ", style="bright_white")
+        right_stats.append(f"{current_time}", style="bold bright_blue")
+        
+        # Combine columns
+        columns = Columns([
+            Align.left(left_stats),
+            Align.center(center_stats),
+            Align.right(right_stats)
+        ], equal=True, expand=True)
+        
+        return Panel(
+            columns,
+            title="[bold bright_white]📈 LIVE STATISTICS 📈[/bold bright_white]",
+            border_style="bright_green"
+        )
+    
+    def create_footer_panel(self, batch: ExtractedTokenBatch) -> Panel:
+        """Create informative footer panel."""
+        
+        footer_text = Text()
+        
+        # Status indicators
+        if batch.high_confidence_count >= 15:
+            status = "[bold bright_green]🟢 EXCELLENT[/bold bright_green]"
+        elif batch.high_confidence_count >= 10:
+            status = "[bold yellow]🟡 GOOD[/bold yellow]"
+        else:
+            status = "[bold red]🔴 POOR[/bold red]"
+        
+        footer_text.append(f"Data Quality: {status} | ")
+        footer_text.append("Press ", style="bright_white")
+        footer_text.append("Ctrl+C", style="bold bright_red")
+        footer_text.append(" to exit | ", style="bright_white")
+        footer_text.append("🔄 Auto-refresh: 5s", style="bright_cyan")
+        
+        return Panel(
+            Align.center(footer_text),
+            border_style="dim white",
+            padding=(0, 1)
+        )
     
     def create_layout(self, batch: ExtractedTokenBatch) -> Layout:
-        """Create the complete layout."""
+        """Create the complete sophisticated layout."""
         layout = Layout()
         
-        # Split into header and content
+        # Split into header, stats, content, footer
         layout.split_column(
-            Layout(name="header", size=8),
-            Layout(name="content")
+            Layout(name="header", size=4),
+            Layout(name="stats", size=8),
+            Layout(name="content"),
+            Layout(name="footer", size=3)
         )
         
-        # Header with stats
-        layout["header"].update(self.create_stats_panel(batch))
-        
-        # Content with token table
+        # Populate sections
+        layout["header"].update(self.create_header_panel())
+        layout["stats"].update(self.create_stats_panel(batch))
         layout["content"].update(self.create_token_table(batch))
+        layout["footer"].update(self.create_footer_panel(batch))
         
         return layout
+    
+    def show_startup_animation(self):
+        """Show startup animation."""
+        from rich.spinner import Spinner
+        
+        startup_text = Text()
+        startup_text.append("🚀 ", style="bright_blue")
+        startup_text.append("INITIALIZING DEXSCRAPER PRO", style="bold bright_white")
+        startup_text.append(" 🚀", style="bright_blue")
+        startup_text.append("\n\n")
+        startup_text.append("Connecting to DexScreener WebSocket...", style="bright_cyan")
+        
+        with self.console.status(startup_text, spinner="dots12") as status:
+            time.sleep(2)
+            status.update("Establishing binary protocol connection...")
+            time.sleep(1)
+            status.update("Loading market data feed...")
+            time.sleep(1)
+        
+        self.console.print("\n[bold bright_green]✅ CONNECTION ESTABLISHED[/bold bright_green]")
+        self.console.print("[bright_cyan]Ready for live market data...[/bright_cyan]\n")
+        time.sleep(1)
 
 
 def create_callback(format_type: str):
@@ -458,7 +861,13 @@ Examples:
         print("Rich format requires 'rich' package. Install with: pip install rich", file=sys.stderr)
         sys.exit(1)
     
-    # Build configuration
+    # Use SlickCLI for rich format
+    if args.format == "rich":
+        cli = SlickCLI()
+        await cli.run()
+        return
+    
+    # Build configuration for other formats
     config = build_config_from_args(args)
     
     # Initialize scraper
