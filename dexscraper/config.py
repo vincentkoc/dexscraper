@@ -118,6 +118,11 @@ class Filters:
     active_boosts_min: Optional[int] = None
     recent_purchased_impressions_min: Optional[int] = None
     
+    # Pumpfun specific filters
+    max_age: Optional[int] = None  # hours
+    profile: Optional[int] = None  # Include profile data (0 or 1)
+    max_launchpad_progress: Optional[float] = None  # Max launchpad progress %
+    
     def to_query_params(self) -> Dict[str, str]:
         """Convert filters to WebSocket query parameters."""
         params = {}
@@ -215,6 +220,14 @@ class Filters:
             params["filters[activeBoosts][min]"] = str(self.active_boosts_min)
         if self.recent_purchased_impressions_min is not None:
             params["filters[recentPurchasedImpressions][min]"] = str(self.recent_purchased_impressions_min)
+        
+        # Pumpfun specific parameters
+        if self.max_age is not None:
+            params["maxAge"] = str(self.max_age)
+        if self.profile is not None:
+            params["profile"] = str(self.profile)
+        if self.max_launchpad_progress is not None:
+            params["maxLaunchpadProgress"] = str(self.max_launchpad_progress)
         
         return params
 
@@ -325,5 +338,22 @@ class PresetConfigs:
                 chain_ids=[chain],
                 enhanced_token_info=True,
                 active_boosts_min=1
+            )
+        )
+    
+    @staticmethod
+    def pumpfun_trending(dex: DEX = DEX.PUMPFUN, max_age: int = 3, 
+                        max_launchpad_progress: float = 99.99) -> ScrapingConfig:
+        """Pumpfun trending configuration matching validated URL parameters."""
+        return ScrapingConfig(
+            timeframe=Timeframe.H1,
+            rank_by=RankBy.TRENDING_SCORE_H6,
+            order=Order.DESC,
+            filters=Filters(
+                chain_ids=[Chain.SOLANA],
+                dex_ids=[dex],
+                max_age=max_age,
+                profile=1,
+                max_launchpad_progress=max_launchpad_progress
             )
         )
