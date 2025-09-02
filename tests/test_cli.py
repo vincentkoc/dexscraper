@@ -13,7 +13,7 @@ from dexscraper.cli import (
     parse_dex_list,
     parse_rank_by,
     parse_timeframe,
-    RichDisplay,
+    SlickCLI,
 )
 from dexscraper.config import Chain, DEX, Filters, RankBy, ScrapingConfig, Timeframe
 from dexscraper.models import ExtractedTokenBatch, TokenProfile
@@ -251,7 +251,7 @@ class TestCallbacks:
         assert "DateTime,Open,High,Low,Close,Volume,Trades" in output
 
 
-class TestRichDisplay:
+class TestSlickCLI:
     """Test Rich display functionality."""
 
     @pytest.mark.skipif(True, reason="Rich not required for core functionality")
@@ -260,11 +260,10 @@ class TestRichDisplay:
         try:
             from rich.console import Console
 
-            console = Console()
-            display = RichDisplay(console)
+            display = SlickCLI()
 
             assert display.extraction_count == 0
-            assert display.console == console
+            assert hasattr(display, "console")
         except ImportError:
             pytest.skip("Rich not available")
 
@@ -274,8 +273,7 @@ class TestRichDisplay:
         try:
             from rich.console import Console
 
-            console = Console()
-            display = RichDisplay(console)
+            display = SlickCLI()
 
             tokens = [
                 TokenProfile(

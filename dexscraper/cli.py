@@ -5,7 +5,9 @@ import asyncio
 import sys
 import time
 from datetime import datetime
-from typing import List
+from typing import List, TYPE_CHECKING
+
+# Rich types will be imported in the try block below
 
 try:
     from rich.align import Align

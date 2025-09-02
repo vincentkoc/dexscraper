@@ -2,7 +2,7 @@ import os
 import sys
 import types
 
-from dex import clean_string, decode_pair
+from dexscraper.protocol import clean_string, decode_pair
 
 # Ensure the project root is on the import path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
