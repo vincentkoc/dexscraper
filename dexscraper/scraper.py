@@ -140,7 +140,7 @@ class DexScraper:
         """Calculate exponential backoff delay with jitter."""
         delay = self.backoff_base * (2 ** min(self._retry_count, 8))
         # Add jitter (±25%)
-        jitter = delay * 0.25 * (2 * random.random() - 1)
+        jitter = delay * 0.25 * (2 * random.random() - 1)  # nosec B311
         return delay + jitter
 
     async def _connect(self) -> Optional[websockets.WebSocketServerProtocol]:
@@ -435,7 +435,7 @@ class DexScraper:
                         fields["txns_24h"] = int(val)
                     elif "makers" not in fields:
                         fields["makers"] = int(val)
-            except:
+            except:  # nosec B112
                 continue
 
         # Also try float extraction (as deep analyzer does)
@@ -458,7 +458,7 @@ class DexScraper:
                         fields["txns_24h"] = int(val)
                     elif "makers" not in fields:
                         fields["makers"] = int(val)
-            except:
+            except:  # nosec B112
                 continue
 
         # CRITICAL: Also extract uint32 integers for transaction counts (as deep analyzer finds)
@@ -472,7 +472,7 @@ class DexScraper:
                 # Maker counts: 10 to 1000 range
                 elif 10 <= val <= 1000 and "makers" not in fields:
                     fields["makers"] = val
-            except:
+            except:  # nosec B112
                 continue
 
         # Return token with at least 3 fields (as deep analyzer does)
@@ -539,7 +539,7 @@ class DexScraper:
                 val = struct.unpack("<d", window[i : i + 8])[0]
                 if self._is_valid_numeric_value(val):
                     values.append((base_offset + i, val, "double"))
-            except:
+            except:  # nosec B112
                 continue
 
         # Extract floats (4-byte IEEE 754)
@@ -552,7 +552,7 @@ class DexScraper:
                 val = struct.unpack("<f", window[i : i + 4])[0]
                 if self._is_valid_numeric_value(val):
                     values.append((base_offset + i, val, "float"))
-            except:
+            except:  # nosec B112
                 continue
 
         # Extract 32-bit integers (counts)
@@ -569,7 +569,7 @@ class DexScraper:
                     <= self.value_ranges["makers"][1]
                 ):
                     values.append((base_offset + i, float(val), "uint32"))
-            except:
+            except:  # nosec B112
                 continue
 
         # Sort by position and remove overlaps

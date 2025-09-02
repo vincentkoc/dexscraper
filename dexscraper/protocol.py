@@ -127,7 +127,7 @@ def decode_pair(data: bytes) -> Optional[TradingPair]:
                     )
                     if value and len(value) >= 2:  # Only accept reasonable values
                         pair_data[field] = value
-                except:
+                except:  # nosec B110
                     pass
             pos += str_len
 

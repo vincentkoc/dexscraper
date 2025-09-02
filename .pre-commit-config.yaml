@@ -15,18 +15,21 @@ repos:
       - id: black
         language_version: python3
         args: [--line-length=88]
+        exclude: 'dexscraper/_version\.py'
 
   - repo: https://github.com/PyCQA/isort
     rev: 6.0.1
     hooks:
       - id: isort
         args: [--profile, black, --line-length=88]
+        exclude: 'dexscraper/_version\.py'
 
   - repo: https://github.com/PyCQA/flake8
     rev: 7.3.0
     hooks:
       - id: flake8
         args: [--config=setup.cfg]
+        exclude: 'dexscraper/_version\.py'
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.17.1
@@ -34,7 +37,7 @@ repos:
       - id: mypy
         additional_dependencies: [types-requests]
         args: [--ignore-missing-imports, --no-strict-optional]
-        exclude: ^tests/
+        exclude: '^(tests/|dexscraper/_version\.py)'
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.6
@@ -42,4 +45,4 @@ repos:
       - id: bandit
         args: [-c, pyproject.toml]
         additional_dependencies: ["bandit[toml]"]
-        exclude: ^tests/
+        exclude: '^(tests/|dexscraper/_version\.py)'
