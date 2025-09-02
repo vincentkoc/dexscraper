@@ -1,12 +1,11 @@
 """Data models for DexScreener trading pairs and market data."""
 
-import csv
 import json
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from io import StringIO
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -21,9 +20,9 @@ class PriceData:
         return {
             "price": str(self.current),
             "priceUsd": str(self.usd),
-            "priceChange": {"h24": str(self.change_24h)}
-            if self.change_24h is not None
-            else None,
+            "priceChange": (
+                {"h24": str(self.change_24h)} if self.change_24h is not None else None
+            ),
         }
 
 
@@ -576,7 +575,6 @@ class ExcelExporter:
             Excel-compatible CSV string
         """
         import csv
-        from io import StringIO
 
         output = StringIO()
         writer = csv.writer(output)

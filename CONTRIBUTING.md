@@ -243,10 +243,10 @@ For security vulnerabilities, please email directly instead of creating a public
    # Ensure main branch is clean
    git checkout main
    git pull origin main
-   
+
    # Run full test suite
    pytest tests/ -v
-   
+
    # Check package build
    python -m build
    python -m twine check dist/*

@@ -3,8 +3,7 @@
 import asyncio
 import logging
 import time
-from typing import Any, Dict, Optional
-from urllib.parse import urlparse
+from typing import Any, Dict
 
 import cloudscraper
 

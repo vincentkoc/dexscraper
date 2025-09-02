@@ -2,22 +2,20 @@
 
 import argparse
 import asyncio
-import os
 import sys
 import time
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 try:
     from rich.align import Align
     from rich.columns import Columns
     from rich.console import Console
     from rich.layout import Layout
-    from rich.live import Live
     from rich.padding import Padding
     from rich.panel import Panel
     from rich.progress import Progress, SpinnerColumn, TextColumn
-    from rich.prompt import Confirm, Prompt
+    from rich.prompt import Prompt
     from rich.rule import Rule
     from rich.table import Table
     from rich.text import Text
@@ -267,7 +265,7 @@ class SlickCLI:
                 self.console.print(table)
 
                 self.console.print(
-                    f"\n[bright_black]Press Ctrl+C to return to menu...[/muted]"
+                    "\n[bright_black]Press Ctrl+C to return to menu...[/muted]"
                 )
 
                 # Wait 5 seconds
@@ -282,7 +280,8 @@ class SlickCLI:
         self.clear_screen()
         self.console.print(
             Rule(
-                "[bright_magenta]💾 Export Mode[/bright_magenta]", style="bright_magenta"
+                "[bright_magenta]💾 Export Mode[/bright_magenta]",
+                style="bright_magenta",
             )
         )
         self.console.print()
@@ -336,7 +335,7 @@ class SlickCLI:
 
         self.console.print(f"\n[bright_green]✓ Exported to: {filename}[/bright_green]")
         self.console.print(
-            f"[bright_black]File saved in current directory[/bright_black]"
+            "[bright_black]File saved in current directory[/bright_black]"
         )
 
         input("\nPress Enter to continue...")
@@ -369,30 +368,6 @@ class SlickCLI:
                 )
                 time.sleep(1)
                 break
-
-            # Support functions for argument parsing
-
-            # Row styling based on performance
-            symbol = token.get_display_name()[:10]
-            if conf_score >= 0.9:
-                symbol = f"[bold bright_cyan]{symbol}[/bold bright_cyan]"
-            elif conf_score >= 0.8:
-                symbol = f"[bright_cyan]{symbol}[/bright_cyan]"
-            else:
-                symbol = f"[cyan]{symbol}[/cyan]"
-
-            table.add_row(
-                symbol,
-                price_str,
-                volume_str,
-                txns_str,
-                makers_str,
-                liquidity_str,
-                change_str,
-                conf_str,
-            )
-
-        return table
 
     def create_header_panel(self) -> Panel:
         """Create sophisticated header with branding."""
@@ -563,7 +538,7 @@ class SlickCLI:
 def create_callback(format_type: str):
     """Create a callback function for the specified format."""
     console = Console() if RICH_AVAILABLE else None
-    rich_display = RichDisplay(console) if console else None
+    rich_display = SlickCLI() if console else None
 
     def callback(pairs: List[TradingPair]):
         if format_type == "json":
@@ -615,7 +590,7 @@ def create_callback(format_type: str):
 def create_token_callback(format_type: str):
     """Create callback for TokenProfile batch data."""
     console = Console() if RICH_AVAILABLE else None
-    rich_display = RichDisplay(console) if console else None
+    rich_display = SlickCLI() if console else None
 
     def callback(batch: ExtractedTokenBatch):
         if format_type == "json":

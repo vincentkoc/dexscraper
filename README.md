@@ -6,8 +6,8 @@
 [![CI](https://github.com/vincentkoc/dexscraper/actions/workflows/ci.yml/badge.svg)](https://github.com/vincentkoc/dexscraper/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/vincentkoc/dexscraper/branch/main/graph/badge.svg)](https://codecov.io/gh/vincentkoc/dexscraper)
 
-> ⚠️ **RESEARCH & EDUCATIONAL PURPOSE ONLY** ⚠️  
-> This project is completely **INDEPENDENT** and has **NO AFFILIATION** with DexScreener.  
+> ⚠️ **RESEARCH & EDUCATIONAL PURPOSE ONLY** ⚠️
+> This project is completely **INDEPENDENT** and has **NO AFFILIATION** with DexScreener.
 > Use at your own risk for trading and ensure compliance with DexScreener's terms of service.
 
 A comprehensive Python package for real-time cryptocurrency trading data from DexScreener's WebSocket API. Supports multiple blockchain networks with rich CLI interface and programmatic access.
@@ -288,7 +288,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 - 🔹 **NO official relationship** with DexScreener.com
 - 🔹 **NO endorsement** from DexScreener
-- 🔹 **NO warranty** or guarantee of service continuity  
+- 🔹 **NO warranty** or guarantee of service continuity
 - 🔹 **NO responsibility** for any changes to DexScreener's API
 - 🔹 Users must **comply with DexScreener's Terms of Service**
 

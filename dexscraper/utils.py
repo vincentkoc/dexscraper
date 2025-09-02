@@ -265,8 +265,6 @@ def calculate_confidence_score(
     Returns:
         Confidence score between 0.0 and 1.0
     """
-    base_score = 0.0
-
     # Field count contribution (up to 0.5)
     field_score = min(field_count / 10.0, 0.5)
 
@@ -366,7 +364,7 @@ def generate_token_id(data: bytes) -> str:
     Returns:
         Short unique identifier
     """
-    hash_obj = hashlib.md5(data)
+    hash_obj = hashlib.md5(data, usedforsecurity=False)
     return hash_obj.hexdigest()[:8]
 
 

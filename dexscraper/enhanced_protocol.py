@@ -2,7 +2,7 @@
 
 import logging
 import struct
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from .models import LiquidityData, PriceData, TradingPair, VolumeData
 
@@ -126,7 +126,7 @@ class EnhancedProtocolParser:
                 elif -100 <= val <= 500 and abs(val) > 0.01:
                     data["percentages"].append((i, val))
 
-            except:
+            except (struct.error, ValueError):
                 continue
 
         # Extract floats
@@ -146,7 +146,7 @@ class EnhancedProtocolParser:
                 elif -100 <= val <= 500 and abs(val) > 0.01:
                     data["percentages"].append((i, val))
 
-            except:
+            except (struct.error, ValueError):
                 continue
 
         return data

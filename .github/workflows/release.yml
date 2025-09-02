@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -83,7 +83,7 @@ jobs:
           echo "🔍 Generating changelog..."
           # Get the previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 ${{ github.ref_name }}^ 2>/dev/null || echo "")
-          
+
           if [ -z "$PREV_TAG" ]; then
             echo "changelog=🎉 Initial release of DexScraper Python package!" >> $GITHUB_OUTPUT
           else
@@ -99,10 +99,10 @@ jobs:
         run: |
           echo "🔨 Building Python package..."
           python -m build
-          
+
           echo "📦 Package contents:"
           ls -la dist/
-          
+
           echo "✅ Checking package integrity..."
           python -m twine check dist/*
 
@@ -119,12 +119,12 @@ jobs:
           name: "🚀 DexScraper ${{ github.ref_name }}"
           body: |
             ## 👻 DexScraper Release ${{ github.ref_name }}
-            
-            > ⚠️ **RESEARCH & EDUCATIONAL PURPOSE ONLY** ⚠️  
+
+            > ⚠️ **RESEARCH & EDUCATIONAL PURPOSE ONLY** ⚠️
             > This project has **NO AFFILIATION** with DexScreener. Use at your own risk.
 
             ### 🎉 What's New
-            
+
             ${{ steps.changelog.outputs.changelog }}
 
             ### 📦 Installation
@@ -138,10 +138,10 @@ jobs:
             ```bash
             # Interactive mode with Rich UI
             dexscraper interactive
-            
+
             # Simple trending pairs
             dexscraper trending --chain solana --limit 10
-            
+
             # Export to file
             dexscraper trending --output data.json --format json
             ```
@@ -150,17 +150,17 @@ jobs:
             ```python
             import asyncio
             from dexscraper import DexScraper, Chain
-            
+
             async def main():
                 scraper = DexScraper()
                 batch = await scraper.extract_token_data()
                 print(f"Found {len(batch.tokens)} tokens!")
-            
+
             asyncio.run(main())
             ```
 
             ### ✨ Key Features
-            
+
             - 🔗 **Multi-chain support**: Solana, Ethereum, Base, BSC, Polygon, Arbitrum, Optimism
             - 📊 **Rich CLI**: Interactive terminal interface with live updates
             - 📈 **Multiple formats**: JSON, CSV, OHLC, MetaTrader-compatible
@@ -168,14 +168,14 @@ jobs:
             - 🔬 **Research focused**: Perfect for academic and educational use
 
             ### 🔗 Links
-            
+
             - 📖 **Documentation**: [README.md](https://github.com/vincentkoc/dexscraper/blob/main/README.md)
             - 🤝 **Contributing**: [CONTRIBUTING.md](https://github.com/vincentkoc/dexscraper/blob/main/CONTRIBUTING.md)
             - 🐛 **Issues**: [GitHub Issues](https://github.com/vincentkoc/dexscraper/issues)
             - ☕ **Support**: [Buy me a coffee](https://buymeacoffee.com/vincentkoc)
 
             ### 🔬 Research & Educational Use Only
-            
+
             This software is provided for research and educational purposes only. It has no affiliation with DexScreener and should not be used for trading decisions. Always verify data independently and understand the risks of cryptocurrency markets.
 
           files: |
