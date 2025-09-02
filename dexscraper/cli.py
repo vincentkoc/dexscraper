@@ -3,20 +3,107 @@
 import asyncio
 import argparse
 import sys
-from typing import List
+import time
+from typing import List, Optional
+
+try:
+    from rich.console import Console
+    from rich.live import Live
+    from rich.table import Table
+    from rich.text import Text
+    from rich.layout import Layout
+    from rich.panel import Panel
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
 
 from .scraper import DexScraper
-from .models import TradingPair
+from .models import TradingPair, TokenProfile, ExtractedTokenBatch
 from .config import (ScrapingConfig, PresetConfigs, Chain, Timeframe, RankBy, Order, 
                     DEX, Filters)
 
 
+class RichDisplay:
+    """Rich display manager for pretty terminal output."""
+    
+    def __init__(self, console: Console):
+        self.console = console
+        self.extraction_count = 0
+        self.total_tokens = 0
+        self.high_confidence_tokens = 0
+        self.last_update = time.time()
+    
+    def create_token_table(self, batch: ExtractedTokenBatch) -> Table:
+        """Create a rich table displaying token data."""
+        table = Table(
+            title="🚀 Live Token Data",
+            title_style="bold magenta"
+        )
+        
+        table.add_column("Symbol", style="cyan", no_wrap=True)
+        table.add_column("Price", style="green", justify="right")
+        table.add_column("Volume 24h", style="yellow", justify="right")
+        table.add_column("Txns", style="blue", justify="right")
+        table.add_column("Makers", style="magenta", justify="right")
+        table.add_column("Confidence", style="red", justify="right")
+        
+        top_tokens = batch.get_top_tokens(10)
+        for token in top_tokens:
+            price_str = f"${token.price:.8f}" if token.price else "N/A"
+            volume_str = f"${token.volume_24h:,.0f}" if token.volume_24h else "N/A"
+            txns_str = str(token.txns_24h) if token.txns_24h else "N/A"
+            makers_str = str(token.makers) if token.makers else "N/A"
+            confidence_str = f"{token.confidence_score:.0%}"
+            
+            table.add_row(
+                token.get_display_name()[:12],
+                price_str,
+                volume_str,
+                txns_str,
+                makers_str,
+                confidence_str
+            )
+        
+        return table
+    
+    def create_stats_panel(self, batch: ExtractedTokenBatch) -> Panel:
+        """Create statistics panel."""
+        stats_text = Text()
+        stats_text.append("📊 Extraction Statistics\n", style="bold")
+        stats_text.append(f"Total Extracted: {batch.total_extracted}\n")
+        stats_text.append(f"High Confidence: {batch.high_confidence_count}\n")  
+        stats_text.append(f"Complete Profiles: {batch.complete_profiles_count}\n")
+        stats_text.append(f"Extraction #{self.extraction_count}")
+        
+        return Panel(stats_text, title="Stats", border_style="blue")
+    
+    def create_layout(self, batch: ExtractedTokenBatch) -> Layout:
+        """Create the complete layout."""
+        layout = Layout()
+        
+        # Split into header and content
+        layout.split_column(
+            Layout(name="header", size=8),
+            Layout(name="content")
+        )
+        
+        # Header with stats
+        layout["header"].update(self.create_stats_panel(batch))
+        
+        # Content with token table
+        layout["content"].update(self.create_token_table(batch))
+        
+        return layout
+
+
 def create_callback(format_type: str):
     """Create a callback function for the specified format."""
+    console = Console() if RICH_AVAILABLE else None
+    rich_display = RichDisplay(console) if console else None
+    
     def callback(pairs: List[TradingPair]):
         if format_type == "json":
             import json
-            import time
             output = {
                 "type": "pairs",
                 "pairs": [pair.to_dict() for pair in pairs],
@@ -33,6 +120,61 @@ def create_callback(format_type: str):
                 ohlc = pair.to_ohlc()
                 if ohlc:
                     print(ohlc.to_mt5_format())
+        elif format_type == "rich" and RICH_AVAILABLE and rich_display:
+            # Convert pairs to token batch for rich display
+            tokens = [TokenProfile(
+                symbol=pair.base_token_symbol,
+                price=pair.price_data.current if pair.price_data else None,
+                volume_24h=pair.volume_data.h24 if pair.volume_data else None,
+                liquidity=pair.liquidity_data.usd if pair.liquidity_data else None,
+                market_cap=pair.fdv,
+                confidence_score=0.8,  # Default confidence
+                field_count=5
+            ) for pair in pairs]
+            
+            batch = ExtractedTokenBatch(tokens=tokens)
+            rich_display.extraction_count += 1
+            
+            layout = rich_display.create_layout(batch)
+            console.clear()
+            console.print(layout)
+    return callback
+
+
+def create_token_callback(format_type: str):
+    """Create callback for TokenProfile batch data."""
+    console = Console() if RICH_AVAILABLE else None
+    rich_display = RichDisplay(console) if console else None
+    
+    def callback(batch: ExtractedTokenBatch):
+        if format_type == "json":
+            import json
+            output = {
+                "type": "enhanced_tokens",
+                "extraction_timestamp": batch.extraction_timestamp,
+                "total_extracted": batch.total_extracted,
+                "high_confidence_count": batch.high_confidence_count,
+                "tokens": [token.to_dict() for token in batch.get_top_tokens(20)]
+            }
+            print(json.dumps(output, separators=(',', ':'), default=str))
+        elif format_type == "ohlcv":
+            batch_csv = batch.to_csv_string("ohlcv")
+            print(batch_csv)
+        elif format_type == "ohlcvt":
+            batch_csv = batch.to_csv_string("ohlcvt")
+            print(batch_csv)
+        elif format_type == "rich" and RICH_AVAILABLE and rich_display:
+            rich_display.extraction_count += 1
+            layout = rich_display.create_layout(batch)
+            console.clear()
+            console.print(layout)
+        else:
+            # Fallback to simple text output
+            print(f"📊 Extracted {batch.total_extracted} tokens, {batch.high_confidence_count} high-confidence")
+            for token in batch.get_top_tokens(10):
+                if token.price:
+                    print(f"  {token.get_display_name()}: ${token.price:.8f} | Vol: ${token.volume_24h:,.0f}")
+    
     return callback
 
 
@@ -181,9 +323,9 @@ Examples:
     # Basic options
     parser.add_argument(
         "--format", "-f",
-        choices=["json", "ohlc", "mt5"],
+        choices=["json", "ohlc", "mt5", "ohlcv", "ohlcvt", "rich"],
         default="json",
-        help="Output format (default: json)"
+        help="Output format (default: json). 'rich' requires rich package."
     )
     parser.add_argument(
         "--debug", "-d",
@@ -311,27 +453,45 @@ Examples:
     
     args = parser.parse_args()
     
+    # Check if Rich is available for rich format
+    if args.format == "rich" and not RICH_AVAILABLE:
+        print("Rich format requires 'rich' package. Install with: pip install rich", file=sys.stderr)
+        sys.exit(1)
+    
     # Build configuration
     config = build_config_from_args(args)
     
+    # Initialize scraper
     scraper = DexScraper(
         debug=args.debug,
-        rate_limit=args.rate_limit,
-        max_retries=args.max_retries,
-        use_cloudflare_bypass=args.cloudflare_bypass,
         config=config
     )
     
     if args.once:
-        pairs = await scraper.get_pairs_once()
-        if pairs:
-            callback = create_callback(args.format)
-            callback(pairs)
+        batch = await scraper.extract_token_data()
+        if batch.tokens:
+            callback = create_token_callback(args.format)
+            callback(batch)
         else:
-            print("Failed to get data", file=sys.stderr)
+            print("Failed to extract token data", file=sys.stderr)
             sys.exit(1)
     else:
-        await scraper.run(output_format=args.format)
+        # Stream with scraper
+        callback = create_token_callback(args.format)
+        
+        async def token_stream():
+            while True:
+                try:
+                    batch = await scraper.extract_token_data()
+                    if batch.tokens:
+                        callback(batch)
+                    await asyncio.sleep(5)  # Wait between extractions
+                except Exception as e:
+                    if args.debug:
+                        print(f"Extraction error: {e}", file=sys.stderr)
+                    await asyncio.sleep(10)  # Wait longer on error
+        
+        await token_stream()
 
 
 def cli_main():
