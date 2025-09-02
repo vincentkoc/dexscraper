@@ -1,0 +1,192 @@
+---
+# yamllint disable rule:line-length
+name: Release
+
+'on':
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  discussions: write
+  id-token: write  # IMPORTANT: Required for PyPI trusted publishing
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --cov=dexscraper
+
+      - name: Lint and type check
+        run: |
+          black --check --diff dexscraper/ tests/
+          isort --check-only --diff dexscraper/ tests/
+          flake8 dexscraper/
+          mypy dexscraper/ --ignore-missing-imports
+
+  release:
+    name: Create Release & Deploy to PyPI
+    runs-on: ubuntu-latest
+    needs: test
+    environment: release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag format
+        run: |
+          if [[ ! "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid tag format. Expected: v1.2.3"
+            exit 1
+          fi
+          echo "✅ Tag format is valid: ${{ github.ref_name }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "🔍 Generating changelog..."
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 ${{ github.ref_name }}^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "changelog=🎉 Initial release of DexScraper Python package!" >> $GITHUB_OUTPUT
+          else
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "Changes since ${PREV_TAG}:" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            git log --pretty=format:"* %s (%h)" ${PREV_TAG}..${{ github.ref_name }} >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build package
+        run: |
+          echo "🔨 Building Python package..."
+          python -m build
+          
+          echo "📦 Package contents:"
+          ls -la dist/
+          
+          echo "✅ Checking package integrity..."
+          python -m twine check dist/*
+
+      - name: Deploy to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Trusted publishing - no password/token needed!
+          verbose: true
+          print-hash: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "🚀 DexScraper ${{ github.ref_name }}"
+          body: |
+            ## 👻 DexScraper Release ${{ github.ref_name }}
+            
+            > ⚠️ **RESEARCH & EDUCATIONAL PURPOSE ONLY** ⚠️  
+            > This project has **NO AFFILIATION** with DexScreener. Use at your own risk.
+
+            ### 🎉 What's New
+            
+            ${{ steps.changelog.outputs.changelog }}
+
+            ### 📦 Installation
+
+            #### From PyPI (Recommended)
+            ```bash
+            pip install dexscraper==${{ github.ref_name }}
+            ```
+
+            #### Quick Start
+            ```bash
+            # Interactive mode with Rich UI
+            dexscraper interactive
+            
+            # Simple trending pairs
+            dexscraper trending --chain solana --limit 10
+            
+            # Export to file
+            dexscraper trending --output data.json --format json
+            ```
+
+            #### Python API
+            ```python
+            import asyncio
+            from dexscraper import DexScraper, Chain
+            
+            async def main():
+                scraper = DexScraper()
+                batch = await scraper.extract_token_data()
+                print(f"Found {len(batch.tokens)} tokens!")
+            
+            asyncio.run(main())
+            ```
+
+            ### ✨ Key Features
+            
+            - 🔗 **Multi-chain support**: Solana, Ethereum, Base, BSC, Polygon, Arbitrum, Optimism
+            - 📊 **Rich CLI**: Interactive terminal interface with live updates
+            - 📈 **Multiple formats**: JSON, CSV, OHLC, MetaTrader-compatible
+            - 🛡️ **Enterprise-ready**: Rate limiting, error recovery, Cloudflare bypass
+            - 🔬 **Research focused**: Perfect for academic and educational use
+
+            ### 🔗 Links
+            
+            - 📖 **Documentation**: [README.md](https://github.com/vincentkoc/dexscraper/blob/main/README.md)
+            - 🤝 **Contributing**: [CONTRIBUTING.md](https://github.com/vincentkoc/dexscraper/blob/main/CONTRIBUTING.md)
+            - 🐛 **Issues**: [GitHub Issues](https://github.com/vincentkoc/dexscraper/issues)
+            - ☕ **Support**: [Buy me a coffee](https://buymeacoffee.com/vincentkoc)
+
+            ### 🔬 Research & Educational Use Only
+            
+            This software is provided for research and educational purposes only. It has no affiliation with DexScreener and should not be used for trading decisions. Always verify data independently and understand the risks of cryptocurrency markets.
+
+          files: |
+            dist/*
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
+          generate_release_notes: false
+
+      - name: Post-release verification
+        run: |
+          echo "🎉 Release ${{ github.ref_name }} completed successfully!"
+          echo "📦 PyPI: https://pypi.org/project/dexscraper/${{ github.ref_name }}/"
+          echo "🚀 GitHub: https://github.com/vincentkoc/dexscraper/releases/tag/${{ github.ref_name }}"
+          echo "💡 Install with: pip install dexscraper==${{ github.ref_name }}"

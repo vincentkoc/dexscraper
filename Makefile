@@ -16,7 +16,7 @@ install: ## Install package dependencies
 
 install-dev: ## Install package with development dependencies
 	$(PYTHON) -m pip install -e ".[dev]"
-	$(PYTHON) -m pip install pytest pytest-asyncio pytest-cov black flake8 mypy rich
+	$(PYTHON) -m pip install pytest pytest-asyncio pytest-cov black isort flake8 mypy rich pre-commit bandit safety
 
 test: ## Run all tests
 	$(PYTHON) -m pytest tests/ -v --tb=short
@@ -42,7 +42,28 @@ format: ## Format code with black
 type-check: ## Run type checking with mypy
 	$(PYTHON) -m mypy dexscraper/ --ignore-missing-imports
 
+# Pre-commit and code quality
+precommit-install: ## Install pre-commit hooks
+	pre-commit install
+
+precommit: ## Run all pre-commit hooks
+	pre-commit run --all-files
+
+precommit-update: ## Update pre-commit hooks
+	pre-commit autoupdate
+
+format-imports: ## Sort imports with isort
+	$(PYTHON) -m isort dexscraper/ tests/ --profile black
+
+format-all: format format-imports ## Format code and sort imports
+
+security: ## Run security checks
+	$(PYTHON) -m bandit -r dexscraper/ -f json -o bandit-report.json || true
+	$(PYTHON) -m safety check --json --output safety-report.json || true
+
 check: lint type-check ## Run all code quality checks
+
+check-all: format-all lint type-check security ## Run all checks including security
 
 build: ## Build distribution packages
 	$(PYTHON) -m pip install build
@@ -84,10 +105,11 @@ demo: ## Run demo extraction and display results
 	$(PYTHON) -c "import asyncio; from dexscraper import DexScraper; async def demo(): scraper = DexScraper(); batch = await scraper.extract_token_data(); print(f'📊 Extracted {batch.total_extracted} tokens, {batch.high_confidence_count} high-confidence'); [print(f'  {t.get_display_name()}: $${t.price:.8f} | Vol: $${t.volume_24h:,.0f}') for t in batch.get_top_tokens(5) if t.price]; asyncio.run(demo())"
 
 # Development shortcuts
-dev-setup: install-dev ## Complete development setup
+dev-setup: install-dev precommit-install ## Complete development setup
 	@echo "✅ Development environment ready!"
 	@echo "🧪 Run 'make test' to run tests"
 	@echo "🚀 Run 'make demo' to test extraction"
+	@echo "🔧 Run 'make precommit' to run all quality checks"
 
 quick-test: test-models test-config ## Quick test suite (no network required)
 

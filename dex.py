@@ -10,7 +10,7 @@ import sys
 from dexscraper import DexScraper
 
 
-async def main():
+async def main() -> None:
     """Run with the original interface for backward compatibility."""
     print("🚀 DexScraper - Backward Compatibility Mode")
     print("📡 Starting real-time token extraction...")
@@ -18,7 +18,7 @@ async def main():
     scraper = DexScraper(debug=True)  # Enable debug by default like original
 
     # Stream tokens using the new extraction method
-    async def stream_tokens():
+    async def stream_tokens() -> None:
         while True:
             try:
                 batch = await scraper.extract_token_data()
