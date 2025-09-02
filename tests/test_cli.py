@@ -325,7 +325,7 @@ class TestCLIIntegration:
                 mock_scraper.extract_token_data = AsyncMock(return_value=mock_batch)
                 mock_scraper_class.return_value = mock_scraper
 
-                with patch("builtins.print") as mock_print:
+                with patch("builtins.print"):
                     try:
                         await main()
                         mock_scraper.extract_token_data.assert_called_once()
@@ -355,8 +355,8 @@ class TestCLIIntegration:
                     with patch("asyncio.run"):
                         try:
                             # This tests that argument parsing doesn't fail
-                            from dexscraper.cli import main
-                        except (SystemExit, Exception) as e:
+                            main()
+                        except (SystemExit, Exception):
                             # Some arguments might cause early exits, that's OK
                             pass
 

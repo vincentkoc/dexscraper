@@ -61,12 +61,13 @@ GHOST_ASCII = """
 class SlickCLI:
     """Slick, dark terminal interface with Claude Code-inspired UX."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.console = Console()
         self.scraper = None
         self.session_start = time.time()
+        self.extraction_count = 0
 
-    def clear_screen(self):
+    def clear_screen(self) -> None:
         """Clear terminal screen."""
         self.console.clear()
 
@@ -221,7 +222,7 @@ class SlickCLI:
         else:
             return f"${num:.0f}"
 
-    async def stream_mode(self):
+    async def stream_mode(self) -> None:
         """Live streaming mode."""
         self.clear_screen()
         self.console.print(
@@ -275,7 +276,7 @@ class SlickCLI:
             self.console.print("\n[bright_yellow]Returning to menu...[/warning]")
             return
 
-    async def export_mode(self):
+    async def export_mode(self) -> None:
         """File export mode."""
         self.clear_screen()
         self.console.print(
@@ -340,7 +341,7 @@ class SlickCLI:
 
         input("\nPress Enter to continue...")
 
-    async def run(self):
+    async def run(self) -> None:
         """Main application loop."""
         # Show loading screen
         self.show_ghost_loading()
@@ -503,7 +504,7 @@ class SlickCLI:
         # Populate sections
         layout["header"].update(self.create_header_panel())
         layout["stats"].update(self.create_stats_panel(batch))
-        layout["content"].update(self.create_token_table(batch))
+        layout["content"].update(self.create_slick_token_table(batch))
         layout["footer"].update(self.create_footer_panel(batch))
 
         return layout

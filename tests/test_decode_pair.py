@@ -2,6 +2,8 @@ import os
 import sys
 import types
 
+from dex import clean_string, decode_pair
+
 # Ensure the project root is on the import path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -9,8 +11,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 sys.modules.setdefault("websockets", types.ModuleType("websockets"))
 # Stub out the exceptions attribute used in dex
 sys.modules["websockets"].exceptions = types.SimpleNamespace(ConnectionClosed=Exception)
-
-from dex import clean_string, decode_pair
 
 
 def test_clean_string_removes_non_printables():

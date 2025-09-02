@@ -55,7 +55,7 @@ class TestBinaryProtocolEdgeCases:
 
     def test_variable_length_records(self):
         """Test handling of variable-length records (from ANALYSIS.md)."""
-        scraper = DexScraper()
+        _ = DexScraper()  # Initialize scraper for testing
 
         # Simulate the gap patterns found in analysis:
         # - OTCfi makers gaps: 5479, 1867 bytes (avg: 3673 bytes)
@@ -331,7 +331,7 @@ class TestExtractionBatchEdgeCases:
         start_time = time.time()
         top_10 = batch.get_top_tokens(10)
         ohlc_data = batch.to_ohlc_batch()
-        csv_export = batch.to_csv_string("ohlcvt")
+        _ = batch.to_csv_string("ohlcvt")  # Test CSV export functionality
         end_time = time.time()
 
         # Should complete quickly (under 1 second for 100 tokens)
