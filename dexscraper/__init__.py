@@ -2,7 +2,6 @@
 
 __version__ = "0.1.0"
 __author__ = "Vincent Koc"
-__email__ = "vincent@koc.io"
 
 from .scraper import DexScraper
 from .models import (TradingPair, PriceData, LiquidityData, VolumeData, OHLCData,
