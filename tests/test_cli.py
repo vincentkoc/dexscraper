@@ -204,9 +204,9 @@ class TestCallbacks:
             callback(batch)
 
         output = output_buffer.getvalue()
-        assert '"type": "enhanced_tokens"' in output
-        assert '"total_extracted": 2' in output
-        assert '"symbol": "TEST1"' in output
+        assert '"type":"enhanced_tokens"' in output
+        assert '"total_extracted":2' in output
+        assert '"symbol":"TEST1"' in output
 
     def test_create_token_callback_ohlcv(self):
         """Test OHLCV format callback creation."""

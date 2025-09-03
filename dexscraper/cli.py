@@ -24,6 +24,16 @@ try:
 
     RICH_AVAILABLE = True
 except ImportError:
+    # Create dummy classes for type hints when Rich is not available
+    class Table:
+        pass
+
+    class Panel:
+        pass
+
+    class Layout:
+        pass
+
     RICH_AVAILABLE = False
 
 from .config import (

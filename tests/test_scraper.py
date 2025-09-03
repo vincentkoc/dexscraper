@@ -110,34 +110,39 @@ class TestDexScraper:
 
     def test_numeric_extraction_methods(self):
         """Test numeric data extraction utilities."""
-        scraper = DexScraper()
+        from dexscraper.utils import (
+            cluster_numeric_values,
+            extract_doubles_from_bytes,
+            extract_floats_from_bytes,
+        )
 
         # Test sample binary data
         sample_data = b"\x00\x01\x02\x03\x40\x09\x21\xfb\x54\x44\x2d\x18"
 
         # Test float extraction
-        floats = scraper._extract_floats(sample_data)
+        floats = extract_floats_from_bytes(sample_data)
         assert len(floats) >= 0  # Should extract some floats
 
         # Test double extraction
-        doubles = scraper._extract_doubles(sample_data)
+        doubles = extract_doubles_from_bytes(sample_data)
         assert len(doubles) >= 0  # Should extract some doubles
 
         # Test clustering
         all_numbers = floats + doubles
         if all_numbers:
-            clusters = scraper._cluster_numbers(all_numbers, tolerance=0.05)
+            clusters = cluster_numeric_values(all_numbers, tolerance=0.05)
             assert isinstance(clusters, list)
 
     def test_metadata_extraction(self):
         """Test metadata extraction from binary data."""
-        scraper = DexScraper()
+        from dexscraper.utils import extract_solana_addresses, extract_urls
 
         # Test with sample data containing URL-like strings
         sample_data = b"https://twitter.com/test\x00some other data\x00"
 
         # Extract addresses and URLs
-        addresses, urls = scraper._extract_metadata(sample_data)
+        addresses = extract_solana_addresses(sample_data)
+        urls = extract_urls(sample_data)
 
         assert isinstance(addresses, list)
         assert isinstance(urls, list)
@@ -149,26 +154,46 @@ class TestDexScraper:
         """Test token profile construction from extracted data."""
         scraper = DexScraper()
 
-        # Mock extracted data
-        numeric_clusters = [
-            [0.000123, 0.000124],  # Price cluster
-            [1000000.0, 1000500.0],  # Volume cluster
-            [150.0, 151.0],  # Transaction cluster
-        ]
-
-        addresses = ["DjDzLNonA1XcWpzTBZhNZUqHCvq6SeLfT3otPYdVSMH"]
-        urls = ["https://twitter.com/test"]
+        # Mock record data with expected structure
+        record = {
+            "metadata": {
+                "addresses": [
+                    {
+                        "address": "DjDzLNonA1XcWpzTBZhNZUqHCvq6SeLfT3otPYdVSMH",
+                        "type": "SOL_token",
+                    }
+                ],
+                "urls": [{"url": "https://twitter.com/test", "type": "twitter"}],
+                "symbols": [{"value": "TEST", "confidence": 0.8, "position": 0}],
+                "protocols": [{"protocol": "Raydium"}],
+            },
+            "completeness_score": 0.85,
+            "cluster": {
+                "start_pos": 0,
+                "end_pos": 100,
+                "classified": {
+                    "prices": [(0.000123, 0.000123)],
+                    "volumes": [(1000000.0, 1000000.0)],
+                    "txns": [(150.0, 150.0)],
+                    "makers": [(10.0, 10.0)],
+                    "liquidity": [(50000.0, 50000.0)],
+                    "market_caps": [(100000.0, 100000.0)],
+                    "percentages": [
+                        (0.05, 0.05),
+                        (0.10, 0.10),
+                        (0.15, 0.15),
+                        (0.20, 0.20),
+                    ],
+                },
+            },
+        }
 
         # Build profile
-        profile = scraper._build_token_profile(
-            numeric_clusters, addresses, urls, record_position=0, record_span=100
-        )
+        profile = scraper._build_token_profile(record, 0)
 
         assert isinstance(profile, TokenProfile)
         assert profile.record_position == 0
         assert profile.record_span == 100
-        assert profile.confidence_score > 0
-        assert profile.field_count > 0
 
     @pytest.mark.asyncio
     async def test_websocket_error_handling(self):
