@@ -68,6 +68,7 @@ packages = ["dexscraper"]
 
 [tool.setuptools_scm]
 write_to = "dexscraper/_version.py"
+local_scheme = "no-local-version"
 
 [tool.black]
 line-length = 88
