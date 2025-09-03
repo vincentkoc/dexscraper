@@ -32,7 +32,7 @@ jobs:
             exit 1
           fi
           echo "✅ Tag format is valid: ${{ github.ref_name }}"
-          
+
       - name: Verify we're on the exact tag commit
         run: |
           echo "Current commit: $(git rev-parse HEAD)"
