@@ -233,7 +233,8 @@ class TestOHLCDataEdgeCases:
         )
 
         mt5_format = early_ohlc.to_mt5_format()
-        assert "1969.12.31" in mt5_format  # Should handle early dates (local time)
+        # Should handle early dates - could be 1969.12.31 (PST) or 1970.01.01 (UTC)
+        assert "1969.12.31" in mt5_format or "1970.01.01" in mt5_format
 
         # Test with very large values
         large_ohlc = OHLCData(
