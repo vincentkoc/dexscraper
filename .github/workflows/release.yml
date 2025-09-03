@@ -71,21 +71,6 @@ jobs:
             echo "EOF" >> $GITHUB_OUTPUT
           fi
 
-      - name: Debug setuptools-scm
-        run: |
-          echo "🔍 Debugging setuptools-scm version detection..."
-          echo "Git status:"
-          git status
-          echo ""
-          echo "Git tags:"
-          git tag -l
-          echo ""
-          echo "Current HEAD:"
-          git log --oneline -1
-          echo ""
-          echo "Setuptools-scm version:"
-          python -c "import setuptools_scm; print(f'Detected version: {setuptools_scm.get_version()}')"
-
       - name: Build package
         run: |
           echo "🔨 Building Python package..."
