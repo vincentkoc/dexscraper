@@ -23,6 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.ref }}
 
       - name: Verify tag format
         run: |
@@ -31,6 +32,16 @@ jobs:
             exit 1
           fi
           echo "✅ Tag format is valid: ${{ github.ref_name }}"
+          
+      - name: Verify we're on the exact tag commit
+        run: |
+          echo "Current commit: $(git rev-parse HEAD)"
+          echo "Tag commit: $(git rev-parse ${{ github.ref_name }})"
+          if [[ "$(git rev-parse HEAD)" != "$(git rev-parse ${{ github.ref_name }})" ]]; then
+            echo "❌ Not on tag commit!"
+            exit 1
+          fi
+          echo "✅ On exact tag commit"
 
       - name: Set up Python
         uses: actions/setup-python@v5
