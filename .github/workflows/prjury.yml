@@ -17,16 +17,21 @@ env:
 
 jobs:
   codex:
-    if: ${{ env.RUN_CODEX == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Codex adapter disabled
+        if: ${{ vars.PRJURY_RUN_CODEX != 'true' }}
+        run: echo "Skipping Codex adapter because vars.PRJURY_RUN_CODEX is not 'true'."
+
       - uses: actions/checkout@v4
+        if: ${{ vars.PRJURY_RUN_CODEX == 'true' }}
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Cache Codex CLI state
+        if: ${{ vars.PRJURY_RUN_CODEX == 'true' }}
         uses: actions/cache@v4
         with:
           path: |
@@ -34,9 +39,11 @@ jobs:
             ~/.codex
           key: ${{ runner.os }}-codex-cli-v1
 
-      - run: mkdir -p "$PRJURY_INPUT_DIR"
+      - if: ${{ vars.PRJURY_RUN_CODEX == 'true' }}
+        run: mkdir -p "$PRJURY_INPUT_DIR"
 
       - name: Codex adapter
+        if: ${{ vars.PRJURY_RUN_CODEX == 'true' }}
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
@@ -64,21 +71,27 @@ jobs:
           sandbox: read-only
 
       - uses: actions/upload-artifact@v4
+        if: ${{ vars.PRJURY_RUN_CODEX == 'true' }}
         with:
           name: codex-json
           path: ${{ env.PRJURY_INPUT_DIR }}/codex.json
 
   gemini:
-    if: ${{ env.RUN_GEMINI == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Gemini adapter disabled
+        if: ${{ vars.PRJURY_RUN_GEMINI != 'true' }}
+        run: echo "Skipping Gemini adapter because vars.PRJURY_RUN_GEMINI is not 'true'."
+
       - uses: actions/checkout@v4
+        if: ${{ vars.PRJURY_RUN_GEMINI == 'true' }}
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Cache Gemini CLI state
+        if: ${{ vars.PRJURY_RUN_GEMINI == 'true' }}
         uses: actions/cache@v4
         with:
           path: |
@@ -86,10 +99,12 @@ jobs:
             .gemini
           key: ${{ runner.os }}-gemini-cli-v1
 
-      - run: mkdir -p "$PRJURY_INPUT_DIR"
+      - if: ${{ vars.PRJURY_RUN_GEMINI == 'true' }}
+        run: mkdir -p "$PRJURY_INPUT_DIR"
 
       - name: Gemini adapter
         id: gemini
+        if: ${{ vars.PRJURY_RUN_GEMINI == 'true' }}
         uses: google-github-actions/run-gemini-cli@v0
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
@@ -100,35 +115,45 @@ jobs:
             Review changed files.
           upload_artifacts: "false"
 
-      - run: echo '${{ steps.gemini.outputs.summary }}' > "${PRJURY_INPUT_DIR}/gemini.json"
+      - if: ${{ vars.PRJURY_RUN_GEMINI == 'true' }}
+        run: echo '${{ steps.gemini.outputs.summary }}' > "${PRJURY_INPUT_DIR}/gemini.json"
 
       - uses: actions/upload-artifact@v4
+        if: ${{ vars.PRJURY_RUN_GEMINI == 'true' }}
         with:
           name: gemini-json
           path: ${{ env.PRJURY_INPUT_DIR }}/gemini.json
 
   greptile:
-    if: ${{ env.RUN_GREPTILE == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Greptile adapter disabled
+        if: ${{ vars.PRJURY_RUN_GREPTILE != 'true' }}
+        run: echo "Skipping Greptile adapter because vars.PRJURY_RUN_GREPTILE is not 'true'."
+
       - uses: actions/checkout@v4
+        if: ${{ vars.PRJURY_RUN_GREPTILE == 'true' }}
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Cache greptile CLI
+        if: ${{ vars.PRJURY_RUN_GREPTILE == 'true' }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/greptile
           key: ${{ runner.os }}-greptile-cli-v1
 
-      - run: mkdir -p "$PRJURY_INPUT_DIR"
+      - if: ${{ vars.PRJURY_RUN_GREPTILE == 'true' }}
+        run: mkdir -p "$PRJURY_INPUT_DIR"
 
       - name: Install greptile CLI
+        if: ${{ vars.PRJURY_RUN_GREPTILE == 'true' }}
         run: pip install --user greptile-cli
 
       - name: Greptile adapter
+        if: ${{ vars.PRJURY_RUN_GREPTILE == 'true' }}
         env:
           GREPTILE_API_KEY: ${{ secrets.GREPTILE_API_KEY }}
           PATH: ${{ env.PATH }}:~/.local/bin
@@ -147,33 +172,42 @@ jobs:
               }]' "${PRJURY_INPUT_DIR}/greptile.raw.json" > "${PRJURY_INPUT_DIR}/greptile.json" || echo "[]" > "${PRJURY_INPUT_DIR}/greptile.json"
 
       - uses: actions/upload-artifact@v4
+        if: ${{ vars.PRJURY_RUN_GREPTILE == 'true' }}
         with:
           name: greptile-json
           path: ${{ env.PRJURY_INPUT_DIR }}/greptile.json
 
   cursor:
-    if: ${{ env.RUN_CURSOR == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Cursor adapter disabled
+        if: ${{ vars.PRJURY_RUN_CURSOR != 'true' }}
+        run: echo "Skipping Cursor adapter because vars.PRJURY_RUN_CURSOR is not 'true'."
+
       - uses: actions/checkout@v4
+        if: ${{ vars.PRJURY_RUN_CURSOR == 'true' }}
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Cache cursor CLI
+        if: ${{ vars.PRJURY_RUN_CURSOR == 'true' }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/cursor
           key: ${{ runner.os }}-cursor-cli-v1
 
-      - run: mkdir -p "$PRJURY_INPUT_DIR"
+      - if: ${{ vars.PRJURY_RUN_CURSOR == 'true' }}
+        run: mkdir -p "$PRJURY_INPUT_DIR"
 
       - name: Install cursor CLI
+        if: ${{ vars.PRJURY_RUN_CURSOR == 'true' }}
         run: npm install -g @cursorai/cli || npm install -g cursor-ai-cli
         continue-on-error: true
 
       - name: Cursor adapter
+        if: ${{ vars.PRJURY_RUN_CURSOR == 'true' }}
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
         run: |
@@ -187,6 +221,7 @@ jobs:
           fi
 
       - uses: actions/upload-artifact@v4
+        if: ${{ vars.PRJURY_RUN_CURSOR == 'true' }}
         with:
           name: cursor-json
           path: ${{ env.PRJURY_INPUT_DIR }}/cursor.json
