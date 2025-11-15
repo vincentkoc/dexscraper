@@ -22,7 +22,6 @@ dexscraper trending --chain solana --limit 10  # Simple trending pairs
 
 # Legacy compatibility
 python dex.py  # Still works, calls new package
-python dex.py --interval 2 --top 5  # Tune refresh cadence and payload size
 ```
 
 ### Testing
