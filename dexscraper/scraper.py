@@ -116,16 +116,8 @@ class DexScraper:
             "Accept": "*/*",
             "Accept-Language": "en-GB,en;q=0.5",
             "Accept-Encoding": "gzip, deflate, br, zstd",
-            "Sec-WebSocket-Version": "13",
-            "Origin": "https://dexscreener.com",
-            "Sec-WebSocket-Extensions": "permessage-deflate",
-            "Connection": "keep-alive, Upgrade",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "websocket",
-            "Sec-Fetch-Site": "same-site",
             "Pragma": "no-cache",
             "Cache-Control": "no-cache",
-            "Upgrade": "websocket",
         }
 
     async def _rate_limit(self):
@@ -149,6 +141,8 @@ class DexScraper:
         logger.debug(f"Connecting to: {uri}")
 
         ssl_context = ssl.create_default_context()
+        # Add ALPN support to match curl behavior - this bypasses Cloudflare detection
+        ssl_context.set_alpn_protocols(['http/1.1'])
 
         for attempt in range(self.max_retries):
             try:
@@ -170,7 +164,8 @@ class DexScraper:
 
                 websocket = await websockets.connect(
                     uri,
-                    extra_headers=headers,
+                    origin="https://dexscreener.com",
+                    additional_headers=headers,
                     ssl=ssl_context,
                     max_size=None,
                     ping_timeout=30,
