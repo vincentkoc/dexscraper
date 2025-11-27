@@ -142,7 +142,7 @@ class DexScraper:
 
         ssl_context = ssl.create_default_context()
         # Add ALPN support to match curl behavior - this bypasses Cloudflare detection
-        ssl_context.set_alpn_protocols(['http/1.1'])
+        ssl_context.set_alpn_protocols(["http/1.1"])
 
         for attempt in range(self.max_retries):
             try:
