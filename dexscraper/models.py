@@ -322,8 +322,8 @@ class TokenProfile:
             "twitter": self.twitter or "",
             "telegram": self.telegram or "",
         }
-        for key, value in string_defaults.items():
-            data[key] = value
+        for key, string_value in string_defaults.items():
+            data[key] = string_value
 
         numeric_defaults: dict[str, Union[int, float]] = {
             "price": self.price or 0.0,
@@ -338,8 +338,8 @@ class TokenProfile:
             "change_6h": self.change_6h or 0.0,
             "change_24h": self.change_24h or 0.0,
         }
-        for key, value in numeric_defaults.items():
-            data[key] = value
+        for key, numeric_value in numeric_defaults.items():
+            data[key] = numeric_value
 
         return data
 
