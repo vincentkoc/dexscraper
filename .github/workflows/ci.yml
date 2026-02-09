@@ -27,11 +27,12 @@ jobs:
         pip install "setuptools_scm[toml]>=6.2"
         VERSION="$(python -c \"from setuptools_scm import get_version; print(get_version(root='.', local_scheme='no-local-version'))\")"
         echo "Computed SCM version: ${VERSION}"
-        if [[ "${VERSION}" != *".dev"* ]]; then
-          echo "❌ main branch must resolve to a .dev version, got: ${VERSION}"
+        if [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "❌ main branch resolved to a stable release version (${VERSION})."
+          echo "   Stable versions must only be produced by tag-based release workflow."
           exit 1
         fi
-        echo "✅ main branch version is dev-only: ${VERSION}"
+        echo "✅ main branch version is non-stable: ${VERSION}"
 
   test:
     runs-on: ubuntu-latest
