@@ -46,6 +46,17 @@ jobs:
           fi
           echo "✅ On exact tag commit"
 
+      - name: Verify tag commit is on main branch
+        run: |
+          TAG_COMMIT="$(git rev-list -n 1 ${{ github.ref_name }})"
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "${TAG_COMMIT}" origin/main; then
+            echo "❌ Tag commit is not on origin/main"
+            echo "    Only tags from main branch are releaseable."
+            exit 1
+          fi
+          echo "✅ Tag commit is on origin/main"
+
       - name: Derive package version
         id: version
         run: |
@@ -106,6 +117,26 @@ jobs:
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare release notes
+        env:
+          DRAFTER_BODY: ${{ steps.release_drafter.outputs.body }}
+          REPO_URL: https://github.com/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          NOTES_FILE="release-assets/release-notes.md"
+          mkdir -p release-assets
+          if [ -n "${DRAFTER_BODY}" ] && ! printf '%s' "${DRAFTER_BODY}" | grep -qi '^.*No changes.*$'; then
+            printf '%s\n' "${DRAFTER_BODY}" > "${NOTES_FILE}"
+          else
+            bash scripts/generate-release-notes.sh "${GITHUB_REF_NAME}" "${NOTES_FILE}"
+          fi
+
+      - name: Update release notes from prepared file
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ github.ref_name }}" --notes-file release-assets/release-notes.md
 
       - name: Upload release assets
         env:
