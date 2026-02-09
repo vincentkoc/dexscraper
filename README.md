@@ -60,12 +60,12 @@ DexScreener data is useful, but scraping it consistently is painful: protocol ch
 ## Commands
 
 ```bash
-dexscraper # streaming json
-dexscraper interactive # gui mode
-dexscraper trending --chain solana --limit 10 --once
-dexscraper top --chain ethereum --min-liquidity 50000 --once
-dexscraper trending --chain solana --format json --output pairs.json --once
-dexscraper --mode trending --chain solana --format rich
+dexscraper                                                                    # streaming json
+dexscraper interactive                                                        # gui mode
+dexscraper trending --chain solana --limit 10 --once                          # trending
+dexscraper top --chain ethereum --min-liquidity 50000 --once                  # top
+dexscraper trending --chain solana --format json --output pairs.json --once   # trending to file
+dexscraper --mode trending --chain solana --format rich                       # gui mode
 ```
 
 ## Python SDK
