@@ -1,0 +1,67 @@
+name-template: "🚀 DexScraper $NEXT_TAG"
+tag-template: "$NEXT_TAG"
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+change-title-escapes: '\<*_&'
+
+categories:
+  - title: "🚀 Features"
+    labels:
+      - "feature"
+      - "enhancement"
+      - "feat"
+  - title: "🐛 Fixes"
+    labels:
+      - "bug"
+      - "fix"
+  - title: "🧰 Maintenance"
+    labels:
+      - "chore"
+      - "ci"
+      - "dependencies"
+      - "dep"
+      - "deps"
+      - "docs"
+      - "refactor"
+      - "test"
+      - "tests"
+  - title: "Other Changes"
+    labels: []
+
+exclude-labels:
+  - "skip-changelog"
+  - "no-changelog"
+
+version-resolver:
+  major:
+    labels:
+      - "major"
+  minor:
+    labels:
+      - "minor"
+      - "feature"
+      - "enhancement"
+  patch:
+    labels:
+      - "patch"
+      - "bug"
+      - "fix"
+      - "chore"
+      - "ci"
+      - "dependencies"
+      - "docs"
+      - "refactor"
+      - "test"
+      - "tests"
+  default: patch
+
+template: |
+  ## 👻 DexScraper Release $NEXT_TAG
+
+  > ⚠️ **RESEARCH & EDUCATIONAL PURPOSE ONLY** ⚠️
+  > This project has **NO AFFILIATION** with DexScreener. Use at your own risk.
+
+  ### 🎉 What's New
+  $CHANGES
+
+  ### 👥 Contributors
+  $CONTRIBUTORS

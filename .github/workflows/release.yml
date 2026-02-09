@@ -10,13 +10,14 @@ name: Release
 permissions:
   contents: write
   discussions: write
-  id-token: write  # IMPORTANT: Required for PyPI trusted publishing
+  id-token: write
 
 jobs:
-  release:
-    name: Create Release & Deploy to PyPI
+  build:
+    name: Build Release Assets
     runs-on: ubuntu-latest
-    environment: release
+    outputs:
+      package_version: ${{ steps.version.outputs.value }}
 
     steps:
       - name: Checkout code
@@ -60,24 +61,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine
 
-      - name: Generate changelog
-        id: changelog
-        run: |
-          echo "🔍 Generating changelog..."
-          # Get the previous tag
-          PREV_TAG=$(git describe --tags --abbrev=0 ${{ github.ref_name }}^ 2>/dev/null || echo "")
-
-          if [ -z "$PREV_TAG" ]; then
-            echo "changelog=🎉 Initial release of DexScraper Python package!" >> $GITHUB_OUTPUT
-          else
-            echo "changelog<<EOF" >> $GITHUB_OUTPUT
-            echo "Changes since ${PREV_TAG}:" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            git log --pretty=format:"* %s (%h)" ${PREV_TAG}..${{ github.ref_name }} >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          fi
-
       - name: Build package
         run: |
           echo "🔨 Building Python package..."
@@ -89,87 +72,72 @@ jobs:
           echo "✅ Checking package integrity..."
           python -m twine check dist/*
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
         with:
+          name: release-assets-${{ github.ref_name }}
+          path: |
+            dist
+
+  github_release:
+    name: Publish GitHub Release From Draft
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+      discussions: write
+      pull-requests: write
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets-${{ github.ref_name }}
+          path: release-assets
+
+      - name: Publish release from Release Drafter
+        id: release_drafter
+        uses: release-drafter/release-drafter@v6
+        with:
+          publish: true
+          tag: ${{ github.ref_name }}
+          version: ${{ needs.build.outputs.package_version }}
           name: "🚀 DexScraper ${{ github.ref_name }}"
-          body: |
-            ## 👻 DexScraper Release ${{ github.ref_name }}
-
-            > ⚠️ **RESEARCH & EDUCATIONAL PURPOSE ONLY** ⚠️
-            > This project has **NO AFFILIATION** with DexScreener. Use at your own risk.
-
-            ### 🎉 What's New
-
-            ${{ steps.changelog.outputs.changelog }}
-
-            ### 📦 Installation
-
-            #### From PyPI (Recommended)
-            ```bash
-            pip install dexscraper==${{ steps.version.outputs.value }}
-            ```
-
-            #### Quick Start
-            ```bash
-            # Interactive mode with Rich UI
-            dexscraper interactive
-
-            # Simple trending pairs
-            dexscraper trending --chain solana --limit 10
-
-            # Export to file
-            dexscraper trending --output data.json --format json
-            ```
-
-            #### Python API
-            ```python
-            import asyncio
-            from dexscraper import DexScraper, Chain
-
-            async def main():
-                scraper = DexScraper()
-                batch = await scraper.extract_token_data()
-                print(f"Found {len(batch.tokens)} tokens!")
-
-            asyncio.run(main())
-            ```
-
-            ### ✨ Key Features
-
-            - 🔗 **Multi-chain support**: Solana, Ethereum, Base, BSC, Polygon, Arbitrum, Optimism
-            - 📊 **Rich CLI**: Interactive terminal interface with live updates
-            - 📈 **Multiple formats**: JSON, CSV, OHLC, MetaTrader-compatible
-            - 🛡️ **Enterprise-ready**: Rate limiting, error recovery, Cloudflare bypass
-            - 🔬 **Research focused**: Perfect for academic and educational use
-
-            ### 🔗 Links
-
-            - 📖 **Documentation**: [README.md](https://github.com/vincentkoc/dexscraper/blob/main/README.md)
-            - 🤝 **Contributing**: [CONTRIBUTING.md](https://github.com/vincentkoc/dexscraper/blob/main/CONTRIBUTING.md)
-            - 🐛 **Issues**: [GitHub Issues](https://github.com/vincentkoc/dexscraper/issues)
-            - ☕ **Support**: [Buy me a coffee](https://buymeacoffee.com/vincentkoc)
-
-            ### 🔬 Research & Educational Use Only
-
-            This software is provided for research and educational purposes only. It has no affiliation with DexScreener and should not be used for trading decisions. Always verify data independently and understand the risks of cryptocurrency markets.
-
-          files: |
-            dist/*
-          draft: false
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
-          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" release-assets/dist/* --clobber
+
+  pypi_publish:
+    name: Publish To PyPI
+    runs-on: ubuntu-latest
+    needs: [build, github_release]
+    environment: release
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets-${{ github.ref_name }}
+          path: release-assets
 
       - name: Deploy to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          # Trusted publishing - no password/token needed!
+          packages-dir: release-assets/dist
           verbose: true
           print-hash: true
 
       - name: Post-release verification
         run: |
           echo "🎉 Release ${{ github.ref_name }} completed successfully!"
-          echo "📦 PyPI: https://pypi.org/project/dexscraper/${{ steps.version.outputs.value }}/"
+          echo "📦 PyPI: https://pypi.org/project/dexscraper/${{ needs.build.outputs.package_version }}/"
           echo "🚀 GitHub: https://github.com/vincentkoc/dexscraper/releases/tag/${{ github.ref_name }}"
-          echo "💡 Install with: pip install dexscraper==${{ steps.version.outputs.value }}"
+          echo "💡 Install with: pip install dexscraper==${{ needs.build.outputs.package_version }}"
