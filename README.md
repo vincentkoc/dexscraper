@@ -1,238 +1,90 @@
-# Dexscraper: 👻 DexScreener Real-time WebSocket Python Package
+<h1 align="center">Dexscraper</h1>
 
-[![PyPI version](https://badge.fury.io/py/dexscraper.svg)](https://badge.fury.io/py/dexscraper)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![CI](https://github.com/vincentkoc/dexscraper/actions/workflows/ci.yml/badge.svg)](https://github.com/vincentkoc/dexscraper/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/vincentkoc/dexscraper/branch/main/graph/badge.svg)](https://codecov.io/gh/vincentkoc/dexscraper)
+<p align="center">
+  <strong>Real-time DexScreener market data in one CLI/SDK.</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/vincentkoc/dexscraper/actions/workflows/ci.yml"><img src="https://github.com/vincentkoc/dexscraper/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/dexscraper"><img src="https://badge.fury.io/py/dexscraper.svg" alt="PyPI"></a>
+  <a href="https://github.com/vincentkoc/dexscraper/releases"><img src="https://img.shields.io/github/v/release/vincentkoc/dexscraper?include_prereleases" alt="Release"></a>
+  <a href="https://github.com/vincentkoc/dexscraper/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vincentkoc/dexscraper" alt="License"></a>
+  <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python">
+</p>
 
 > [!IMPORTANT]
-> This project is completely **INDEPENDENT** and has **NO AFFILIATION** with DexScreener.
-> Use at your own risk for trading and ensure compliance with DexScreener's terms of service.
+> This project is independent and not affiliated with DexScreener.
+> Use at your own risk and comply with DexScreener terms.
+> For research purposes only.
 
-Dexscraper is a comprehensive Python package and SDK for real-time cryptocurrency trading data from DexScreener's WebSocket API. Supports multiple blockchain networks with rich CLI interface and programmatic access.
+## Install
 
-## ✨ Features
-
-### 🏗️ **Package Architecture**
-- **Modular Design**: Structured as a proper Python package with clean separation of concerns
-- **Type Safety**: Full type annotations with mypy support
-- **Rich CLI**: Interactive command-line interface with live data visualization
-- **Extensible Config**: Support for multiple chains, DEXs, and filtering options
-- **Export Formats**: JSON, CSV, MetaTrader-compatible formats
-
-### 🔗 **Multi-Chain Support**
-- **Solana** (Raydium, Orca, Jupiter)
-- **Ethereum** (Uniswap V2/V3, SushiSwap)
-- **Base, BSC, Polygon, Arbitrum, Optimism**
-- **Avalanche** and more
-
-### 📊 **Data Processing Support**
-- **Real-time WebSocket**: Direct connection to DexScreener's binary protocol
-- **OHLC Data**: MetaTrader-compatible candlestick data
-- **Token Profiles**: Enhanced metadata with social links and descriptions
-- **Market Metrics**: Price, volume, liquidity, FDV, market cap
-- **Advanced Filtering**: By trending score, volume, price changes, liquidity
-
-### 🛡️ **Automation Ready**
-- **Cloudflare Bypass**: Optional cloudscraper integration for difficult networks
-- **Rate Limiting**: Configurable request throttling
-- **Error Recovery**: Robust reconnection with exponential backoff
-- **Data Validation**: Comprehensive input sanitization and NaN handling
-- **Security**: Bandit security scanning, dependency safety checks
-
-## 🚀 Installation
-
-### From PyPI (Recommended)
 ```bash
 pip install dexscraper
 ```
 
-### Development Installation
+<details>
+<summary>Alternative: Development install</summary>
+
 ```bash
 git clone https://github.com/vincentkoc/dexscraper.git
 cd dexscraper
 pip install -e .[dev]
 ```
 
-## 📖 Quick Start
+</details>
 
-### Command Line Interface
+## Why Dexscraper?
 
-**Interactive Mode** (Rich UI):
+DexScreener data is useful, but scraping it consistently is painful: protocol changes, Cloudflare behavior, reconnect logic, and export formatting. **Dexscraper gives you one stable interface** for real-time extraction, filtering, and export, both from CLI and Python code.
+
+## What You Get
+
+- Real-time streaming of webSocket extraction
+- Multi-chain and multi-DEX filtering
+- Trending/top/gainers/new presets
+- Structured token profiles and OHLC/OHLCVT output for tools like Metatrader
+- Optional Cloudflare bypass flow
+- Typed Python SDK + CLI
+
+## Commands
+
 ```bash
 dexscraper interactive
-```
-
-**Simple Trending Pairs**:
-```bash
 dexscraper trending --chain solana --limit 10 --once
+dexscraper top --chain ethereum --min-liquidity 50000 --once
+dexscraper trending --chain solana --format json --output pairs.json --once
+dexscraper --mode trending --chain solana --format rich
 ```
 
-**Export to File**:
-```bash
-dexscraper trending --chain ethereum --output pairs.json --format json --once
-dexscraper trending --chain solana --output ohlc.csv --format ohlcvt --once
-```
-
-**Filter by DEX and Volume**:
-```bash
-dexscraper trending --dexs raydium,orca --min-volume 50000 --min-liquidity 10000 --once
-```
-
-### Programmatic Usage
+## Python SDK
 
 ```python
 import asyncio
-from dexscraper import DexScraper, ScrapingConfig, Chain, RankBy, Filters, Timeframe
+from dexscraper import DexScraper, ScrapingConfig, Filters, Chain, RankBy, Timeframe
 
-# Custom configuration
 config = ScrapingConfig(
     timeframe=Timeframe.H1,
     rank_by=RankBy.VOLUME,
-    filters=Filters(chain_ids=[Chain.SOLANA], liquidity_min=50000),
+    filters=Filters(chain_ids=[Chain.SOLANA], liquidity_min=50_000),
 )
 
-scraper = DexScraper(config=config, use_cloudflare_bypass=True)
-
-async def get_trending():
+async def main():
+    scraper = DexScraper(config=config, use_cloudflare_bypass=True)
     batch = await scraper.extract_token_data()
     for token in batch.get_top_tokens(10):
         if token.price is not None:
-            print(f"{token.get_display_name()}: ${token.price:.6f}")
+            print(token.get_display_name(), token.price)
 
-asyncio.run(get_trending())
+asyncio.run(main())
 ```
 
-**Real-time Streaming**:
-```python
-async def stream_pairs():
-    scraper = DexScraper()
-    def on_batch(batch):
-        print(f"Received {batch.total_extracted} tokens")
-        for token in batch.get_top_tokens(10):
-            if token.change_24h and token.change_24h > 10:
-                print(f"🚀 {token.get_display_name()} +{token.change_24h:.1f}%")
+## Contributing
 
-    await scraper.stream_pairs(callback=on_batch, use_enhanced_extraction=True)
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-asyncio.run(stream_pairs())
-```
+Open an issue for bugs, start a discussion for questions, and star the repo if it helps.
 
-## 📊 Data Formats & Export Options
-
-<details>
-<summary>JSON Format (Default)</summary>
-
-```json
-{
-  "type": "pairs",
-  "pairs": [
-    {
-      "chain": "solana",
-      "dex": "raydium",
-      "pairAddress": "ABC123...",
-      "baseToken": {
-        "name": "Example Token",
-        "symbol": "EXAM",
-        "address": "DEF456..."
-      },
-      "price": {
-        "current": "1.234567",
-        "usd": "1.234567",
-        "change24h": "12.5"
-      },
-      "liquidity": {"usd": "150000.00"},
-      "volume": {"h24": "75000.00"},
-      "fdv": "5000000.00",
-      "createdAt": "2024-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-</details>
-
-<details>
-<summary>OHLC Format (MetaTrader Compatible)</summary>
-
-```csv
-Timestamp,Symbol,Open,High,Low,Close,Volume
-1642248600,EXAM/USDC,1.20,1.35,1.18,1.25,75000
-```
-</details>
-
-
-<details>
-<summary>Token Profile Format</summary>
-
-```json
-{
-  "symbol": "EXAM",
-  "name": "Example Token",
-  "description": "Revolutionary DeFi token...",
-  "websites": ["https://example.com"],
-  "socials": {
-    "twitter": "@exampletoken",
-    "telegram": "t.me/example"
-  }
-}
-```
-</details>
-
-## ⚙️ Advanced Configuration
-
-### Preset Configurations
-```python
-from dexscraper import PresetConfigs
-
-# Trending Solana pairs (default)
-config = PresetConfigs.trending()
-
-# High-volume Ethereum pairs
-config = PresetConfigs.top_volume(chain=Chain.ETHEREUM)
-```
-
-### Custom Configuration
-```python
-from dexscraper import ScrapingConfig, Chain, RankBy, DEX, Filters
-
-config = ScrapingConfig(
-    timeframe=Timeframe.H1,
-    rank_by=RankBy.VOLUME,
-    order=Order.DESC,
-    filters=Filters(
-        chain_ids=[Chain.SOLANA, Chain.BASE],
-        dex_ids=[DEX.RAYDIUM, DEX.ORCA],
-        liquidity_min=10000,
-        volume_h24_min=50000,
-        fdv_min=100000,
-        pair_age_max=72,
-    )
-)
-```
-
-### Rate Limiting & Reliability
-```python
-scraper = DexScraper(
-    rate_limit=2.0,           # Max 2 requests/second
-    max_retries=10,           # Retry up to 10 times
-    backoff_base=2.0,         # Exponential backoff
-    use_cloudflare_bypass=True # Use cloudscraper for difficult networks
-)
-```
-
-## 🤝 Contributing
-
-
-## 💝 Support Development
-
-If this project helps your research or learning:
-
-- ⭐ **Star this repository**
-- 🤝 **Contribute code or documentation** We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for complete development setup, testing, and contribution workflow.
-- ☕ **[Buy me a coffee](https://buymeacoffee.com/vincentkoc)**
-- 💖 **[Sponsor on GitHub](https://github.com/sponsors/vincentkoc)**
-
----
-
-Built with ❤️ for the DeFi research community
+<p align="center">
+  <sub>Made by <a href="https://github.com/vincentkoc">Vincent Koc</a> · <a href="LICENSE">GPL-3.0</a></sub>
+</p>
