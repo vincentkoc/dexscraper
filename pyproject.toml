@@ -37,7 +37,7 @@ keywords = [
 ]
 dependencies = [
     "websockets>=15.0",
-    "cloudscraper>=3.0.0",
+    "cloudscraper @ git+https://github.com/VeNoMouS/cloudscraper.git@3.0.0",
 ]
 dynamic = ["version"]
 
