@@ -138,13 +138,6 @@ module = [
 ]
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-module = [
-    "dexscraper.cli",
-    "dexscraper.scraper",
-]
-ignore_errors = true
-
 [tool.coverage.run]
 source = ["dexscraper"]
 omit = [

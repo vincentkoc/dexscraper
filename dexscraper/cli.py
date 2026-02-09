@@ -5,7 +5,7 @@ import asyncio
 import sys
 import time
 from datetime import datetime
-from typing import List
+from typing import Callable, List, Optional
 
 # Rich types will be imported in the try block below
 
@@ -25,13 +25,13 @@ try:
     RICH_AVAILABLE = True
 except ImportError:
     # Create dummy classes for type hints when Rich is not available
-    class Table:
+    class Table:  # type: ignore[no-redef]
         pass
 
-    class Panel:
+    class Panel:  # type: ignore[no-redef]
         pass
 
-    class Layout:
+    class Layout:  # type: ignore[no-redef]
         pass
 
     RICH_AVAILABLE = False
@@ -75,7 +75,7 @@ class SlickCLI:
 
     def __init__(self) -> None:
         self.console = Console()
-        self.scraper = None
+        self.scraper: Optional[DexScraper] = None
         self.session_start = time.time()
         self.extraction_count = 0
 
@@ -83,7 +83,7 @@ class SlickCLI:
         """Clear terminal screen."""
         self.console.clear()
 
-    def show_ghost_loading(self):
+    def show_ghost_loading(self) -> None:
         """Show ASCII ghost with loading animation."""
         self.clear_screen()
 
@@ -95,7 +95,7 @@ class SlickCLI:
         self.console.print(Align.center(GHOST_ASCII))
         time.sleep(1.5)
 
-    def show_main_menu(self):
+    def show_main_menu(self) -> str:
         """Display main menu with options."""
         self.clear_screen()
 
@@ -141,10 +141,11 @@ class SlickCLI:
             default="1",
         )
 
-    async def extract_data(self):
+    async def extract_data(self) -> ExtractedTokenBatch:
         """Extract token data with progress animation."""
         if not self.scraper:
             self.scraper = DexScraper(debug=False)
+        scraper = self.scraper
 
         with Progress(
             SpinnerColumn("dots"),
@@ -152,7 +153,7 @@ class SlickCLI:
             console=self.console,
         ) as progress:
             progress.add_task("Extraction", total=None)
-            batch = await self.scraper.extract_token_data()
+            batch = await scraper.extract_token_data()
 
         return batch
 
@@ -213,12 +214,9 @@ class SlickCLI:
         if token.symbol and not token.symbol.startswith("TOKEN_"):
             return token.symbol[:15]
 
-        # Try to extract real name from metadata if available
-        if hasattr(token, "metadata") and token.metadata:
-            if "name" in token.metadata:
-                return token.metadata["name"][:15]
-            if "symbol" in token.metadata:
-                return token.metadata["symbol"][:15]
+        # Use explicit token name when symbol is not available
+        if token.token_name:
+            return token.token_name[:15]
 
         # Fallback to generic token name if no real symbol found
         return f"UNKNOWN_{index:02d}"
@@ -521,7 +519,7 @@ class SlickCLI:
 
         return layout
 
-    def show_startup_animation(self):
+    def show_startup_animation(self) -> None:
         """Show startup animation."""
 
         startup_text = Text()
@@ -547,12 +545,12 @@ class SlickCLI:
         time.sleep(1)
 
 
-def create_callback(format_type: str):
+def create_callback(format_type: str) -> Callable[[List[TradingPair]], None]:
     """Create a callback function for the specified format."""
     console = Console() if RICH_AVAILABLE else None
     rich_display = SlickCLI() if console else None
 
-    def callback(pairs: List[TradingPair]):
+    def callback(pairs: List[TradingPair]) -> None:
         if format_type == "json":
             import json
 
@@ -593,18 +591,19 @@ def create_callback(format_type: str):
             rich_display.extraction_count += 1
 
             layout = rich_display.create_layout(batch)
-            console.clear()
-            console.print(layout)
+            if console is not None:
+                console.clear()
+                console.print(layout)
 
     return callback
 
 
-def create_token_callback(format_type: str):
+def create_token_callback(format_type: str) -> Callable[[ExtractedTokenBatch], None]:
     """Create callback for TokenProfile batch data."""
     console = Console() if RICH_AVAILABLE else None
     rich_display = SlickCLI() if console else None
 
-    def callback(batch: ExtractedTokenBatch):
+    def callback(batch: ExtractedTokenBatch) -> None:
         if format_type == "json":
             import json
 
@@ -625,8 +624,9 @@ def create_token_callback(format_type: str):
         elif format_type == "rich" and RICH_AVAILABLE and rich_display:
             rich_display.extraction_count += 1
             layout = rich_display.create_layout(batch)
-            console.clear()
-            console.print(layout)
+            if console is not None:
+                console.clear()
+                console.print(layout)
         else:
             # Fallback to simple text output
             print(
@@ -684,7 +684,7 @@ def parse_dex_list(value: str) -> List[DEX]:
     return dexs
 
 
-def build_config_from_args(args) -> ScrapingConfig:
+def build_config_from_args(args: argparse.Namespace) -> ScrapingConfig:
     """Build scraping configuration from parsed arguments."""
     # Handle preset modes first
     if args.mode:
@@ -775,7 +775,7 @@ def build_config_from_args(args) -> ScrapingConfig:
     return config
 
 
-async def main():
+async def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
         description="DexScreener WebSocket scraper for real-time crypto data",
@@ -970,7 +970,7 @@ Examples:
         # Stream with scraper
         callback = create_token_callback(args.format)
 
-        async def token_stream():
+        async def token_stream() -> None:
             while True:
                 try:
                     batch = await scraper.extract_token_data()
@@ -985,7 +985,7 @@ Examples:
         await token_stream()
 
 
-def cli_main():
+def cli_main() -> None:
     """Entry point for console scripts."""
     try:
         asyncio.run(main())

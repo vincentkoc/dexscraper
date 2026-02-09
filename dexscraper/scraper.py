@@ -44,7 +44,7 @@ class DexScraper:
         backoff_base: float = 1.0,
         use_cloudflare_bypass: bool = False,
         config: Optional[ScrapingConfig] = None,
-    ):
+    ) -> None:
         """Initialize the enhanced scraper.
 
         Args:
@@ -135,7 +135,7 @@ class DexScraper:
             "Sec-WebSocket-Version": "13",
         }
 
-    async def _rate_limit(self):
+    async def _rate_limit(self) -> None:
         """Implement rate limiting."""
         now = time.time()
         time_since_last = now - self._last_request
@@ -148,7 +148,7 @@ class DexScraper:
         delay = self.backoff_base * (2 ** min(self._retry_count, 8))
         # Add jitter (±25%)
         jitter = delay * 0.25 * (2 * random.random() - 1)  # nosec B311
-        return delay + jitter
+        return float(delay + jitter)
 
     def _resolve_proxy_override(self) -> Optional[Union[str, bool]]:
         """Resolve optional proxy override from DEXSCRAPER_PROXY environment variable."""
@@ -450,7 +450,7 @@ class DexScraper:
                 all_symbols.append(match)
 
         # Remove duplicates and sort by frequency
-        symbol_counts = {}
+        symbol_counts: Dict[str, int] = {}
         for symbol in all_symbols:
             symbol_upper = symbol.upper()
             symbol_counts[symbol_upper] = symbol_counts.get(symbol_upper, 0) + 1
@@ -645,9 +645,11 @@ class DexScraper:
             and abs(val) < 1e12  # Not too close to zero  # Not absurdly large
         )
 
-    def _classify_numeric_values(self, values: List[Tuple]) -> Dict[str, List[Tuple]]:
+    def _classify_numeric_values(
+        self, values: List[Tuple[int, float, str]]
+    ) -> Dict[str, List[Tuple[int, float, str]]]:
         """Classify numeric values by probable field type using validated ranges."""
-        classified = {
+        classified: Dict[str, List[Tuple[int, float, str]]] = {
             "prices": [],
             "txns": [],
             "makers": [],
@@ -707,12 +709,14 @@ class DexScraper:
 
         return classified
 
-    def _extract_metadata_patterns(self, data: bytes, data_start: int) -> Dict:
+    def _extract_metadata_patterns(
+        self, data: bytes, data_start: int
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Extract metadata patterns (addresses, URLs, protocols)."""
         # Convert to text for pattern matching
         printable_text = "".join(chr(b) if 32 <= b <= 126 else " " for b in data)
 
-        metadata = {
+        metadata: Dict[str, List[Dict[str, Any]]] = {
             "addresses": [],
             "urls": [],
             "protocols": [],
@@ -792,12 +796,12 @@ class DexScraper:
         else:
             return "unknown"
 
-    def _extract_token_symbols(self, text: str, data_start: int) -> List[Dict]:
+    def _extract_token_symbols(self, text: str, data_start: int) -> List[Dict[str, Any]]:
         """Extract potential token symbols and names from binary data."""
         import re
 
-        token_symbols = []
-        symbol_counts = {}  # Track frequency of each symbol
+        token_symbols: List[Dict[str, Any]] = []
+        symbol_counts: Dict[str, int] = {}  # Track frequency of each symbol
 
         # Pattern 1: Common crypto token patterns (2-10 uppercase letters)
         crypto_pattern = re.compile(r"\b[A-Z]{2,10}\b")
@@ -1084,7 +1088,9 @@ class DexScraper:
         # Return top 20 most confident symbols
         return token_symbols[:20]
 
-    def _extract_best_token_symbol(self, metadata: Dict, index: int) -> str:
+    def _extract_best_token_symbol(
+        self, metadata: Dict[str, List[Dict[str, Any]]], index: int
+    ) -> str:
         """Extract the best token symbol from metadata, with fallback to placeholder."""
         tokens = metadata.get("tokens", [])
 
@@ -1092,22 +1098,27 @@ class DexScraper:
             return f"UNKNOWN_{index:02d}"
 
         # Sort by confidence, frequency, and type preference
-        def symbol_score(token_info):
-            score = token_info["confidence"]
+        def symbol_score(token_info: Dict[str, Any]) -> float:
+            confidence = token_info.get("confidence", 0.0)
+            score = float(confidence) if isinstance(confidence, (int, float)) else 0.0
 
             # Boost score based on frequency (tokens appearing multiple times are more likely correct)
-            frequency = token_info.get("frequency", 1)
+            frequency_raw = token_info.get("frequency", 1)
+            frequency = (
+                int(frequency_raw) if isinstance(frequency_raw, (int, float)) else 1
+            )
             if frequency > 1:
                 score += min(frequency * 0.02, 0.2)  # Up to 0.2 bonus for frequency
 
             # Type-based bonuses
-            if token_info["type"] == "whitelisted":
+            token_type = str(token_info.get("type", ""))
+            if token_type == "whitelisted":
                 score += 0.5  # Strong preference for known tokens
-            elif token_info["type"] == "dollar_prefixed":
+            elif token_type == "dollar_prefixed":
                 score += 0.3
-            elif token_info["type"] == "context_based":
+            elif token_type == "context_based":
                 score += 0.2
-            elif token_info["type"] == "crypto_symbol":
+            elif token_type == "crypto_symbol":
                 score += 0.1
 
             return score
@@ -1116,10 +1127,13 @@ class DexScraper:
 
         # Filter for quality - skip single letters unless whitelisted
         for token in tokens:
-            symbol = token["symbol"]
+            symbol_raw = token.get("symbol")
+            if not isinstance(symbol_raw, str):
+                continue
+            symbol = symbol_raw
 
             # Skip single letters unless they're whitelisted (like "AA", "EA", "FA" from our analysis)
-            if len(symbol) == 1 and token["type"] != "whitelisted":
+            if len(symbol) == 1 and str(token.get("type", "")) != "whitelisted":
                 continue
 
             # Accept symbols between 2-10 characters that are alphanumeric
@@ -1131,24 +1145,26 @@ class DexScraper:
 
         # If no good symbol found, use the first one if available
         if tokens:
-            return tokens[0]["symbol"].upper()
+            first_symbol = tokens[0].get("symbol")
+            if isinstance(first_symbol, str):
+                return first_symbol.upper()
 
         # Final fallback
         return f"UNKNOWN_{index:02d}"
 
     def _group_clusters_to_tokens(
-        self, clusters: List[Dict], metadata: Dict
-    ) -> List[Dict]:
+        self, clusters: List[Dict[str, Any]], metadata: Dict[str, List[Dict[str, Any]]]
+    ) -> List[Dict[str, Any]]:
         """Group numeric clusters with metadata to form complete token records."""
-        token_records = []
+        token_records: List[Dict[str, Any]] = []
 
         # Sort clusters by field completeness
-        clusters.sort(key=lambda c: c["field_types"], reverse=True)
+        clusters.sort(key=lambda c: int(c.get("field_types", 0)), reverse=True)
 
         for cluster in clusters[:20]:  # Process top 20 clusters
             # Find relevant metadata within reasonable distance
-            cluster_start = cluster["start_pos"]
-            relevant_metadata = {
+            cluster_start = int(cluster.get("start_pos", 0))
+            relevant_metadata: Dict[str, List[Dict[str, Any]]] = {
                 "addresses": [],
                 "urls": [],
                 "protocols": [],
@@ -1156,16 +1172,19 @@ class DexScraper:
                 "tokens": [],
             }
 
-            for addr_info in metadata["addresses"]:
-                if abs(addr_info["position"] - cluster_start) <= 1000:
+            for addr_info in metadata.get("addresses", []):
+                pos = addr_info.get("position")
+                if isinstance(pos, int) and abs(pos - cluster_start) <= 1000:
                     relevant_metadata["addresses"].append(addr_info)
 
-            for url_info in metadata["urls"]:
-                if abs(url_info["position"] - cluster_start) <= 1000:
+            for url_info in metadata.get("urls", []):
+                pos = url_info.get("position")
+                if isinstance(pos, int) and abs(pos - cluster_start) <= 1000:
                     relevant_metadata["urls"].append(url_info)
 
-            for token_info in metadata["tokens"]:
-                if abs(token_info["position"] - cluster_start) <= 1000:
+            for token_info in metadata.get("tokens", []):
+                pos = token_info.get("position")
+                if isinstance(pos, int) and abs(pos - cluster_start) <= 1000:
                     relevant_metadata["tokens"].append(token_info)
 
             # Create token record
@@ -1180,24 +1199,29 @@ class DexScraper:
             token_records.append(record)
 
         # Sort by completeness score
-        token_records.sort(key=lambda r: r["completeness_score"], reverse=True)
+        token_records.sort(
+            key=lambda r: float(r.get("completeness_score", 0.0)), reverse=True
+        )
 
         return token_records
 
-    def _calculate_completeness_score(self, cluster: Dict, metadata: Dict) -> float:
+    def _calculate_completeness_score(
+        self, cluster: Dict[str, Any], metadata: Dict[str, List[Dict[str, Any]]]
+    ) -> float:
         """Calculate completeness score for a token record."""
         score = 0.0
 
         # Numeric field completeness (max 60 points)
-        field_types = cluster["field_types"]
+        field_types_raw = cluster.get("field_types", 0)
+        field_types = int(field_types_raw) if isinstance(field_types_raw, int) else 0
         score += min(field_types * 10, 60)
 
         # Metadata completeness (max 40 points)
-        if metadata["addresses"]:
+        if metadata.get("addresses"):
             score += 10
-        if metadata["urls"]:
+        if metadata.get("urls"):
             score += 10
-        if metadata["protocols"]:
+        if metadata.get("protocols"):
             score += 10
         if metadata.get("age_indicators"):
             score += 10
@@ -1296,7 +1320,7 @@ class DexScraper:
     # Legacy compatibility methods
     async def get_pairs_once(self) -> Optional[List[TradingPair]]:
         """Get pairs using enhanced extraction, return as legacy format."""
-        batch = await self.extract_complete_token_data()
+        batch = await self.extract_token_data()
         if batch.tokens:
             return batch.to_trading_pairs()
         return None
@@ -1313,7 +1337,7 @@ class DexScraper:
         while True:
             try:
                 if use_enhanced_extraction:
-                    batch = await self.extract_complete_token_data()
+                    batch = await self.extract_token_data()
                     if batch.tokens:
                         if callback:
                             callback(batch)
@@ -1338,7 +1362,7 @@ class DexScraper:
 
     async def _output_enhanced_batch(
         self, batch: ExtractedTokenBatch, format_type: str
-    ):
+    ) -> None:
         """Output enhanced token batch in specified format."""
         if format_type == "json":
             output = {
@@ -1362,7 +1386,7 @@ class DexScraper:
             for ohlc in ohlc_data[:10]:  # Top 10
                 print(ohlc.to_mt5_format())
 
-    async def _output_pairs(self, pairs: List[TradingPair], format_type: str):
+    async def _output_pairs(self, pairs: List[TradingPair], format_type: str) -> None:
         """Output pairs in specified format (legacy)."""
         if format_type == "json":
             output = {
@@ -1388,7 +1412,7 @@ class DexScraper:
 
     async def run(
         self, output_format: str = "json", use_enhanced_extraction: bool = True
-    ):
+    ) -> None:
         """Run the enhanced scraper."""
         logger.info("Starting Enhanced DexScreener scraper...")
         try:
