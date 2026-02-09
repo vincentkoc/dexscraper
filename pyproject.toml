@@ -142,7 +142,6 @@ ignore_missing_imports = true
 module = [
     "dexscraper.cli",
     "dexscraper.enhanced_protocol",
-    "dexscraper.logger",
     "dexscraper.scraper",
 ]
 ignore_errors = true
