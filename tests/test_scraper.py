@@ -266,7 +266,9 @@ class TestDexScraper:
         token_profile = TokenProfile(symbol="TEST", price=0.001, field_count=6)
 
         with (
-            patch.object(scraper, "_extract_real_token_names", return_value={100: "TEST"}),
+            patch.object(
+                scraper, "_extract_real_token_names", return_value={100: "TEST"}
+            ),
             patch.object(
                 scraper,
                 "_extract_validated_token_record",
