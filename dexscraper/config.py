@@ -30,7 +30,10 @@ class Timeframe(Enum):
 class RankBy(Enum):
     """Supported ranking methods."""
 
+    TRENDING_SCORE_M5 = "trendingScoreM5"
+    TRENDING_SCORE_H1 = "trendingScoreH1"
     TRENDING_SCORE_H6 = "trendingScoreH6"
+    TRENDING_SCORE_H24 = "trendingScoreH24"
     VOLUME = "volume"
     TRANSACTIONS = "txns"
     PRICE_CHANGE_H24 = "priceChangeH24"
@@ -250,8 +253,18 @@ class ScrapingConfig:
 
     def build_websocket_url(self) -> str:
         """Build the complete WebSocket URL with all parameters."""
+        timeframe_value = self.timeframe.value
+        if self.rank_by in {
+            RankBy.TRENDING_SCORE_M5,
+            RankBy.TRENDING_SCORE_H1,
+            RankBy.TRENDING_SCORE_H6,
+            RankBy.TRENDING_SCORE_H24,
+        }:
+            # DexScreener expects trendingScore* ranking on the h24 endpoint.
+            timeframe_value = Timeframe.H24.value
+
         base_url = (
-            f"wss://io.dexscreener.com/dex/screener/v5/pairs/{self.timeframe.value}/1"
+            f"wss://io.dexscreener.com/dex/screener/v5/pairs/{timeframe_value}/1"
         )
 
         params = {
@@ -279,9 +292,16 @@ class PresetConfigs:
         chain: Chain = Chain.SOLANA, timeframe: Timeframe = Timeframe.H24
     ) -> ScrapingConfig:
         """Trending pairs configuration."""
+        rank_map = {
+            Timeframe.M5: RankBy.TRENDING_SCORE_M5,
+            Timeframe.H1: RankBy.TRENDING_SCORE_H1,
+            Timeframe.H6: RankBy.TRENDING_SCORE_H6,
+            Timeframe.H24: RankBy.TRENDING_SCORE_H24,
+        }
+
         return ScrapingConfig(
             timeframe=timeframe,
-            rank_by=RankBy.TRENDING_SCORE_H6,
+            rank_by=rank_map.get(timeframe, RankBy.TRENDING_SCORE_H6),
             order=Order.DESC,
             filters=Filters(chain_ids=[chain]),
         )

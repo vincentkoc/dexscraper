@@ -108,6 +108,25 @@ class TestDexScraper:
         assert "profile=1" in url
         assert "maxLaunchpadProgress=99.99" in url
 
+    def test_proxy_override_resolution(self):
+        """Test DEXSCRAPER_PROXY environment parsing."""
+        scraper = DexScraper()
+
+        with patch.dict("os.environ", {}, clear=True):
+            assert scraper._resolve_proxy_override() is None
+
+        with patch.dict("os.environ", {"DEXSCRAPER_PROXY": "none"}):
+            assert scraper._resolve_proxy_override() is False
+
+        with patch.dict("os.environ", {"DEXSCRAPER_PROXY": "false"}):
+            assert scraper._resolve_proxy_override() is False
+
+        with patch.dict("os.environ", {"DEXSCRAPER_PROXY": "auto"}):
+            assert scraper._resolve_proxy_override() is None
+
+        with patch.dict("os.environ", {"DEXSCRAPER_PROXY": " http://127.0.0.1:8080 "}):
+            assert scraper._resolve_proxy_override() == "http://127.0.0.1:8080"
+
     def test_numeric_extraction_methods(self):
         """Test numeric data extraction utilities."""
         from dexscraper.utils import (

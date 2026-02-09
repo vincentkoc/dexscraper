@@ -760,7 +760,13 @@ def build_config_from_args(args) -> ScrapingConfig:
         )
 
         # Determine ranking
-        rank_by = args.rank_by or RankBy.TRENDING_SCORE_H6
+        default_trending_rank = {
+            Timeframe.M5: RankBy.TRENDING_SCORE_M5,
+            Timeframe.H1: RankBy.TRENDING_SCORE_H1,
+            Timeframe.H6: RankBy.TRENDING_SCORE_H6,
+            Timeframe.H24: RankBy.TRENDING_SCORE_H24,
+        }.get(args.timeframe, RankBy.TRENDING_SCORE_H6)
+        rank_by = args.rank_by or default_trending_rank
         order = Order.DESC if args.order == "desc" else Order.ASC
 
         config = ScrapingConfig(
@@ -947,7 +953,11 @@ Examples:
     config = build_config_from_args(args)
 
     # Initialize scraper
-    scraper = DexScraper(debug=args.debug, config=config)
+    scraper = DexScraper(
+        debug=args.debug,
+        config=config,
+        use_cloudflare_bypass=args.cloudflare_bypass,
+    )
 
     if args.once:
         batch = await scraper.extract_token_data()

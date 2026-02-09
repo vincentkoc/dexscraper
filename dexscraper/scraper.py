@@ -1,8 +1,10 @@
 """DexScreener WebSocket scraper with validated binary protocol extraction."""
 
 import asyncio
+import inspect
 import json
 import logging
+import os
 import random
 import re
 import ssl
@@ -18,6 +20,14 @@ from .config import Chain, PresetConfigs, RankBy, ScrapingConfig, Timeframe
 from .models import ExtractedTokenBatch, OHLCData, TokenProfile, TradingPair
 
 logger = logging.getLogger(__name__)
+
+_CONNECT_SIGNATURE = inspect.signature(websockets.connect)
+_CONNECT_SUPPORTS_PROXY = "proxy" in _CONNECT_SIGNATURE.parameters
+_CONNECT_HEADERS_PARAM = (
+    "additional_headers"
+    if "additional_headers" in _CONNECT_SIGNATURE.parameters
+    else "extra_headers"
+)
 
 
 class DexScraper:
@@ -137,6 +147,21 @@ class DexScraper:
         jitter = delay * 0.25 * (2 * random.random() - 1)  # nosec B311
         return delay + jitter
 
+    def _resolve_proxy_override(self) -> Optional[Union[str, bool]]:
+        """Resolve optional proxy override from DEXSCRAPER_PROXY environment variable."""
+        raw_value = os.environ.get("DEXSCRAPER_PROXY")
+        if raw_value is None:
+            return None
+
+        value = raw_value.strip()
+        if not value or value.lower() in {"0", "false", "none", "off", "disable"}:
+            return False
+
+        if value.lower() in {"auto", "default"}:
+            return None
+
+        return value
+
     async def _connect(self) -> Optional[websockets.WebSocketServerProtocol]:
         """Establish WebSocket connection with retry logic."""
         uri = self.config.build_websocket_url()
@@ -164,16 +189,29 @@ class DexScraper:
 
                 logger.debug(f"Connection attempt {attempt + 1}/{self.max_retries}")
 
-                websocket = await websockets.connect(
-                    uri,
-                    origin="https://dexscreener.com",
-                    additional_headers=headers,
-                    ssl=ssl_context,
-                    max_size=None,
-                    ping_timeout=30,
-                    ping_interval=20,
-                    close_timeout=10,
-                )
+                connect_kwargs: Dict[str, Any] = {
+                    _CONNECT_HEADERS_PARAM: headers,
+                    "ssl": ssl_context,
+                    "max_size": None,
+                    "ping_timeout": 30,
+                    "ping_interval": 20,
+                    "close_timeout": 10,
+                }
+
+                proxy_override = self._resolve_proxy_override()
+                if proxy_override is not None:
+                    if _CONNECT_SUPPORTS_PROXY:
+                        connect_kwargs["proxy"] = (
+                            None if proxy_override is False else proxy_override
+                        )
+                    else:
+                        logger.warning(
+                            "DEXSCRAPER_PROXY set but websockets %s doesn't support"
+                            " proxy overrides; ignoring.",
+                            websockets.__version__,
+                        )
+
+                websocket = await websockets.connect(uri, **connect_kwargs)
 
                 self._retry_count = 0  # Reset on successful connection
                 logger.info("WebSocket connection established")

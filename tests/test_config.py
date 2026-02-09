@@ -112,8 +112,8 @@ class TestScrapingConfig:
 
         url = config.build_websocket_url()
 
-        # Check base URL and core params
-        assert "wss://io.dexscreener.com/dex/screener/v5/pairs/h1/1" in url
+        # Trending score rankings are served from the h24 endpoint.
+        assert "wss://io.dexscreener.com/dex/screener/v5/pairs/h24/1" in url
         assert "rankBy[key]=trendingScoreH6" in url
         assert "rankBy[order]=desc" in url
 
@@ -136,9 +136,24 @@ class TestPresetConfigs:
         config = PresetConfigs.trending()
 
         assert config.timeframe == Timeframe.H24
-        assert config.rank_by == RankBy.TRENDING_SCORE_H6
+        assert config.rank_by == RankBy.TRENDING_SCORE_H24
         assert config.order == Order.DESC
         assert config.filters.chain_ids == [Chain.SOLANA]
+
+    def test_trending_config_timeframes(self):
+        """Trending preset should map timeframe to matching rank."""
+        config_m5 = PresetConfigs.trending(chain=Chain.SOLANA, timeframe=Timeframe.M5)
+        assert config_m5.rank_by == RankBy.TRENDING_SCORE_M5
+
+        config_h1 = PresetConfigs.trending(chain=Chain.SOLANA, timeframe=Timeframe.H1)
+        assert config_h1.rank_by == RankBy.TRENDING_SCORE_H1
+
+        config_h6 = PresetConfigs.trending(chain=Chain.BASE, timeframe=Timeframe.H6)
+        assert config_h6.rank_by == RankBy.TRENDING_SCORE_H6
+
+        config_h24 = PresetConfigs.trending(chain=Chain.BASE, timeframe=Timeframe.H24)
+        assert config_h24.rank_by == RankBy.TRENDING_SCORE_H24
+        assert config_h24.filters.chain_ids == [Chain.BASE]
 
     def test_trending_config_custom_chain(self):
         """Test trending preset with custom chain."""
@@ -232,7 +247,10 @@ class TestEnumValues:
 
     def test_rankby_values(self):
         """Test rank by enum values."""
+        assert RankBy.TRENDING_SCORE_M5.value == "trendingScoreM5"
+        assert RankBy.TRENDING_SCORE_H1.value == "trendingScoreH1"
         assert RankBy.TRENDING_SCORE_H6.value == "trendingScoreH6"
+        assert RankBy.TRENDING_SCORE_H24.value == "trendingScoreH24"
         assert RankBy.VOLUME.value == "volume"
         assert RankBy.TRANSACTIONS.value == "txns"
         assert RankBy.PRICE_CHANGE_H24.value == "priceChangeH24"

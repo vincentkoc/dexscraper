@@ -43,7 +43,10 @@ class TestCLIParsing:
     def test_parse_rank_by(self):
         """Test rank by parsing from string."""
         assert parse_rank_by("volume") == RankBy.VOLUME
+        assert parse_rank_by("trendingScoreM5") == RankBy.TRENDING_SCORE_M5
+        assert parse_rank_by("trendingScoreH1") == RankBy.TRENDING_SCORE_H1
         assert parse_rank_by("trendingScoreH6") == RankBy.TRENDING_SCORE_H6
+        assert parse_rank_by("trendingScoreH24") == RankBy.TRENDING_SCORE_H24
         assert parse_rank_by("txns") == RankBy.TRANSACTIONS
 
         with pytest.raises(argparse.ArgumentTypeError):
@@ -76,7 +79,7 @@ class TestConfigBuilding:
         config = build_config_from_args(args)
 
         assert isinstance(config, ScrapingConfig)
-        assert config.rank_by == RankBy.TRENDING_SCORE_H6
+        assert config.rank_by == RankBy.TRENDING_SCORE_H24
         assert config.filters.chain_ids == [Chain.SOLANA]
 
     def test_build_config_custom_filters(self):
@@ -179,6 +182,54 @@ class TestConfigBuilding:
         config = build_config_from_args(args)
 
         assert config.filters.chain_ids == [Chain.ETHEREUM, Chain.BASE]
+
+    def test_build_config_default_rank_tracks_timeframe(self):
+        """Default custom rank should align with timeframe-specific trending rank."""
+        args = Mock()
+        args.mode = None
+        args.chain = Chain.SOLANA
+        args.chains = None
+        args.timeframe = Timeframe.H1
+        args.rank_by = None
+        args.order = "desc"
+        for attr in [
+            "dex",
+            "dexs",
+            "min_liquidity",
+            "max_liquidity",
+            "min_volume",
+            "max_volume",
+            "min_volume_h6",
+            "max_volume_h6",
+            "min_volume_h1",
+            "max_volume_h1",
+            "min_txns",
+            "max_txns",
+            "min_txns_h6",
+            "max_txns_h6",
+            "min_txns_h1",
+            "max_txns_h1",
+            "min_age",
+            "max_age",
+            "min_change",
+            "max_change",
+            "min_change_h6",
+            "max_change_h6",
+            "min_change_h1",
+            "max_change_h1",
+            "min_fdv",
+            "max_fdv",
+            "min_mcap",
+            "max_mcap",
+            "enhanced",
+            "min_boosts",
+            "min_ads",
+        ]:
+            setattr(args, attr, None)
+        args.enhanced = False
+
+        config = build_config_from_args(args)
+        assert config.rank_by == RankBy.TRENDING_SCORE_H1
 
 
 class TestCallbacks:
@@ -330,10 +381,33 @@ class TestCLIIntegration:
                     except SystemExit:
                         pass  # CLI may exit normally
 
-    def test_cli_argument_parsing(self):
-        """Test CLI argument parsing with various combinations."""
-        import argparse
+    @pytest.mark.asyncio
+    async def test_cli_main_cloudflare_bypass_flag(self):
+        """Test CLI passes --cloudflare-bypass to DexScraper."""
+        from dexscraper.cli import main
 
+        test_args = ["dexscraper", "--once", "--format", "json", "--cloudflare-bypass"]
+
+        with patch("sys.argv", test_args):
+            with patch("dexscraper.cli.DexScraper") as mock_scraper_class:
+                mock_scraper = Mock()
+                mock_batch = ExtractedTokenBatch(
+                    tokens=[TokenProfile(symbol="TEST", price=0.001)]
+                )
+                mock_scraper.extract_token_data = AsyncMock(return_value=mock_batch)
+                mock_scraper_class.return_value = mock_scraper
+
+                with patch("builtins.print"):
+                    try:
+                        await main()
+                    except SystemExit:
+                        pass
+
+                assert mock_scraper_class.call_args.kwargs["use_cloudflare_bypass"] is True
+
+    @pytest.mark.asyncio
+    async def test_cli_argument_parsing(self):
+        """Test CLI argument parsing with various combinations."""
         from dexscraper.cli import main
 
         # Test valid arguments
@@ -350,13 +424,12 @@ class TestCLIIntegration:
 
             with patch("sys.argv", full_args):
                 with patch("dexscraper.cli.DexScraper"):
-                    with patch("asyncio.run"):
-                        try:
-                            # This tests that argument parsing doesn't fail
-                            main()
-                        except (SystemExit, Exception):
-                            # Some arguments might cause early exits, that's OK
-                            pass
+                    try:
+                        # This tests that argument parsing doesn't fail
+                        await main()
+                    except (SystemExit, Exception):
+                        # Some arguments might cause early exits, that's OK
+                        pass
 
 
 if __name__ == "__main__":
