@@ -223,6 +223,23 @@ class TestDexScraper:
             websocket = await scraper._connect()
             assert websocket is None  # Should return None on failure
 
+    @pytest.mark.asyncio
+    async def test_connect_sets_origin_without_duplicate_header(self):
+        """Origin should be passed via connect arg, not duplicated in header map."""
+        scraper = DexScraper(max_retries=1)
+        mock_ws = Mock()
+
+        with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
+            mock_connect.return_value = mock_ws
+            websocket = await scraper._connect()
+
+        assert websocket is mock_ws
+        kwargs = mock_connect.call_args.kwargs
+        assert kwargs["origin"] == "https://dexscreener.com"
+        headers = kwargs.get("additional_headers") or kwargs.get("extra_headers")
+        assert headers is not None
+        assert "Origin" not in headers
+
 
 class TestDexScraperIntegration:
     """Integration tests requiring network access."""

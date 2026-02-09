@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import cloudscraper
 
@@ -15,12 +15,39 @@ class CloudflareBypass:
 
     def __init__(self, debug: bool = False):
         self.debug = debug
-        self.scraper = cloudscraper.create_scraper(
-            browser={"browser": "chrome", "platform": "windows", "mobile": False}
-        )
+        self.scraper = self._create_scraper()
         self._session_cookies = {}
         self._last_session_update = 0
         self._session_ttl = 300  # 5 minutes
+
+    def _create_scraper(self):
+        """Create a new cloudscraper session."""
+        return cloudscraper.create_scraper(
+            browser={"browser": "chrome", "platform": "windows", "mobile": False}
+        )
+
+    def _refresh_session(self):
+        """Reset cookies and rotate to a fresh scraper session."""
+        self._session_cookies = {}
+        self._last_session_update = 0
+        try:
+            self.scraper.cookies.clear()
+        except Exception:
+            # Cookie jar type can vary; best effort only.
+            pass
+        self.scraper = self._create_scraper()
+
+    async def _fetch_main_site(self, main_site_url: str):
+        """Run the blocking cloudscraper request in an executor."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self._make_request, main_site_url)
+
+    def _store_session_cookies(self):
+        """Persist latest cookies from scraper state."""
+        self._session_cookies = dict(self.scraper.cookies)
+        self._last_session_update = time.time()
+        logger.debug("Got %d cookies", len(self._session_cookies))
+        return self._session_cookies
 
     async def get_session_cookies(self, target_url: str) -> Dict[str, str]:
         """Get valid session cookies by first visiting the main site."""
@@ -37,25 +64,34 @@ class CloudflareBypass:
             # Visit the actual dexscreener.com site to get CF cookies
             main_site_url = "https://dexscreener.com"
 
-            logger.debug(f"Getting session from {main_site_url}")
+            logger.debug("Getting session from %s", main_site_url)
 
             # Make a request to the main site to get past Cloudflare
-            response = await asyncio.get_event_loop().run_in_executor(
-                None, self._make_request, main_site_url
+            response = await self._fetch_main_site(main_site_url)
+            status_code: Optional[int] = (
+                response.status_code if response is not None else None
             )
 
-            if response and response.status_code == 200:
-                self._session_cookies = dict(self.scraper.cookies)
-                self._last_session_update = current_time
-                logger.debug(f"Got {len(self._session_cookies)} cookies")
-                return self._session_cookies
+            if status_code == 200:
+                return self._store_session_cookies()
+
+            if status_code == 403:
+                logger.warning("Cloudflare returned 403, refreshing session and retrying")
             else:
                 logger.warning(
-                    f"Failed to get session: HTTP {response.status_code if response else 'None'}"
+                    "Failed to get session: HTTP %s; refreshing session and retrying",
+                    status_code,
                 )
 
+            self._refresh_session()
+            retry_response = await self._fetch_main_site(main_site_url)
+            retry_status = retry_response.status_code if retry_response else None
+            if retry_status == 200:
+                return self._store_session_cookies()
+
+            logger.warning("Retry failed to get session: HTTP %s", retry_status)
         except Exception as e:
-            logger.error(f"Error getting session cookies: {e}")
+            logger.error("Error getting session cookies: %s", e)
 
         return {}
 
@@ -65,7 +101,7 @@ class CloudflareBypass:
             response = self.scraper.get(url, timeout=30)
             return response
         except Exception as e:
-            logger.debug(f"Request failed: {e}")
+            logger.debug("Request failed: %s", e)
             return None
 
     def get_enhanced_headers(self, base_headers: Dict[str, str]) -> Dict[str, str]:

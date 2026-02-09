@@ -1,1 +1,2 @@
-websockets
+websockets>=15.0
+cloudscraper>=3.0.0

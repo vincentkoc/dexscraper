@@ -189,8 +189,13 @@ class DexScraper:
 
                 logger.debug(f"Connection attempt {attempt + 1}/{self.max_retries}")
 
+                # Keep Origin set via dedicated websocket arg to avoid duplicates.
+                connect_headers = headers.copy()
+                connect_headers.pop("Origin", None)
+
                 connect_kwargs: Dict[str, Any] = {
-                    _CONNECT_HEADERS_PARAM: headers,
+                    _CONNECT_HEADERS_PARAM: connect_headers,
+                    "origin": "https://dexscreener.com",
                     "ssl": ssl_context,
                     "max_size": None,
                     "ping_timeout": 30,

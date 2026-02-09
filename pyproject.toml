@@ -37,7 +37,7 @@ keywords = [
 ]
 dependencies = [
     "websockets>=15.0",
-    "cloudscraper>=1.2.60",
+    "cloudscraper>=3.0.0",
 ]
 dynamic = ["version"]
 
