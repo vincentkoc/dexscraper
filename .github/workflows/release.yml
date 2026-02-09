@@ -35,9 +35,11 @@ jobs:
 
       - name: Verify we're on the exact tag commit
         run: |
-          echo "Current commit: $(git rev-parse HEAD)"
-          echo "Tag commit: $(git rev-parse ${{ github.ref_name }})"
-          if [[ "$(git rev-parse HEAD)" != "$(git rev-parse ${{ github.ref_name }})" ]]; then
+          TAG_COMMIT="$(git rev-list -n 1 ${{ github.ref_name }})"
+          HEAD_COMMIT="$(git rev-parse HEAD)"
+          echo "Current commit: ${HEAD_COMMIT}"
+          echo "Tag commit: ${TAG_COMMIT}"
+          if [[ "${HEAD_COMMIT}" != "${TAG_COMMIT}" ]]; then
             echo "❌ Not on tag commit!"
             exit 1
           fi

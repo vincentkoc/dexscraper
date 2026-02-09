@@ -118,6 +118,8 @@ class DexScraper:
             "Accept-Encoding": "gzip, deflate, br, zstd",
             "Pragma": "no-cache",
             "Cache-Control": "no-cache",
+            "Origin": "https://dexscreener.com",
+            "Sec-WebSocket-Version": "13",
         }
 
     async def _rate_limit(self):
