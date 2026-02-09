@@ -141,6 +141,22 @@ jobs:
           name: release-assets-${{ needs.build.outputs.release_tag }}
           path: release-assets
 
+      - name: Normalize artifact layout
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets/dist
+          shopt -s nullglob
+          top_level=(release-assets/*.whl release-assets/*.tar.gz)
+          if [ ${#top_level[@]} -gt 0 ]; then
+            mv "${top_level[@]}" release-assets/dist/
+          fi
+          if ! compgen -G "release-assets/dist/*" > /dev/null; then
+            echo "❌ No release artifacts found after download."
+            echo "Downloaded tree:"
+            find release-assets -maxdepth 3 -type f | sort || true
+            exit 1
+          fi
+
       - name: Publish release from Release Drafter
         id: release_drafter
         uses: release-drafter/release-drafter@v6
@@ -177,6 +193,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           gh release upload "${{ needs.build.outputs.release_tag }}" release-assets/dist/* --clobber
 
   pypi_publish:
@@ -193,6 +210,22 @@ jobs:
         with:
           name: release-assets-${{ needs.build.outputs.release_tag }}
           path: release-assets
+
+      - name: Normalize artifact layout
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets/dist
+          shopt -s nullglob
+          top_level=(release-assets/*.whl release-assets/*.tar.gz)
+          if [ ${#top_level[@]} -gt 0 ]; then
+            mv "${top_level[@]}" release-assets/dist/
+          fi
+          if ! compgen -G "release-assets/dist/*" > /dev/null; then
+            echo "❌ No release artifacts found after download."
+            echo "Downloaded tree:"
+            find release-assets -maxdepth 3 -type f | sort || true
+            exit 1
+          fi
 
       - name: Deploy to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
