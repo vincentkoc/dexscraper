@@ -27,8 +27,8 @@ jobs:
 
       - name: Verify tag format
         run: |
-          if [[ ! "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "❌ Invalid tag format. Expected: v1.2.3"
+          if [[ ! "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
+            echo "❌ Invalid tag format. Expected: v1.2.3 (or prerelease like v1.2.3-rc1)"
             exit 1
           fi
           echo "✅ Tag format is valid: ${{ github.ref_name }}"
@@ -44,6 +44,11 @@ jobs:
             exit 1
           fi
           echo "✅ On exact tag commit"
+
+      - name: Derive package version
+        id: version
+        run: |
+          echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -84,13 +89,6 @@ jobs:
           echo "✅ Checking package integrity..."
           python -m twine check dist/*
 
-      - name: Deploy to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          # Trusted publishing - no password/token needed!
-          verbose: true
-          print-hash: true
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -109,7 +107,7 @@ jobs:
 
             #### From PyPI (Recommended)
             ```bash
-            pip install dexscraper==${{ github.ref_name }}
+            pip install dexscraper==${{ steps.version.outputs.value }}
             ```
 
             #### Quick Start
@@ -162,9 +160,16 @@ jobs:
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
           generate_release_notes: false
 
+      - name: Deploy to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Trusted publishing - no password/token needed!
+          verbose: true
+          print-hash: true
+
       - name: Post-release verification
         run: |
           echo "🎉 Release ${{ github.ref_name }} completed successfully!"
-          echo "📦 PyPI: https://pypi.org/project/dexscraper/${{ github.ref_name }}/"
+          echo "📦 PyPI: https://pypi.org/project/dexscraper/${{ steps.version.outputs.value }}/"
           echo "🚀 GitHub: https://github.com/vincentkoc/dexscraper/releases/tag/${{ github.ref_name }}"
-          echo "💡 Install with: pip install dexscraper==${{ github.ref_name }}"
+          echo "💡 Install with: pip install dexscraper==${{ steps.version.outputs.value }}"
