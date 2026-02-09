@@ -6,15 +6,15 @@
 [![CI](https://github.com/vincentkoc/dexscraper/actions/workflows/ci.yml/badge.svg)](https://github.com/vincentkoc/dexscraper/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/vincentkoc/dexscraper/branch/main/graph/badge.svg)](https://codecov.io/gh/vincentkoc/dexscraper)
 
-> ⚠️ **RESEARCH & EDUCATIONAL PURPOSE ONLY** ⚠️
+> [!IMPORTANT]
 > This project is completely **INDEPENDENT** and has **NO AFFILIATION** with DexScreener.
 > Use at your own risk for trading and ensure compliance with DexScreener's terms of service.
 
-A comprehensive Python package for real-time cryptocurrency trading data from DexScreener's WebSocket API. Supports multiple blockchain networks with rich CLI interface and programmatic access.
+Dexscraper is a comprehensive Python package and SDK for real-time cryptocurrency trading data from DexScreener's WebSocket API. Supports multiple blockchain networks with rich CLI interface and programmatic access.
 
 ## ✨ Features
 
-### 🏗️ **Professional Package Architecture**
+### 🏗️ **Package Architecture**
 - **Modular Design**: Structured as a proper Python package with clean separation of concerns
 - **Type Safety**: Full type annotations with mypy support
 - **Rich CLI**: Interactive command-line interface with live data visualization
@@ -27,14 +27,14 @@ A comprehensive Python package for real-time cryptocurrency trading data from De
 - **Base, BSC, Polygon, Arbitrum, Optimism**
 - **Avalanche** and more
 
-### 📊 **Data Processing**
+### 📊 **Data Processing Support**
 - **Real-time WebSocket**: Direct connection to DexScreener's binary protocol
 - **OHLC Data**: MetaTrader-compatible candlestick data
 - **Token Profiles**: Enhanced metadata with social links and descriptions
 - **Market Metrics**: Price, volume, liquidity, FDV, market cap
 - **Advanced Filtering**: By trending score, volume, price changes, liquidity
 
-### 🛡️ **Enterprise-Ready**
+### 🛡️ **Automation Ready**
 - **Cloudflare Bypass**: Optional cloudscraper integration for difficult networks
 - **Rate Limiting**: Configurable request throttling
 - **Error Recovery**: Robust reconnection with exponential backoff
@@ -54,12 +54,6 @@ git clone https://github.com/vincentkoc/dexscraper.git
 cd dexscraper
 pip install -e .[dev]
 ```
-
-### Requirements
-- **Python 3.9+**
-- **Core**: `websockets>=10.0`, `cloudscraper>=1.2.60`
-- **CLI**: `rich` (optional, for enhanced terminal interface)
-- **Dev**: `pytest`, `black`, `mypy`, `pre-commit`
 
 ## 📖 Quick Start
 
@@ -125,7 +119,9 @@ asyncio.run(stream_pairs())
 
 ## 📊 Data Formats & Export Options
 
-### JSON Format (Default)
+<details>
+<summary>JSON Format (Default)</summary>
+
 ```json
 {
   "type": "pairs",
@@ -152,14 +148,21 @@ asyncio.run(stream_pairs())
   ]
 }
 ```
+</details>
 
-### OHLC Format (MetaTrader Compatible)
+<details>
+<summary>OHLC Format (MetaTrader Compatible)</summary>
+
 ```csv
 Timestamp,Symbol,Open,High,Low,Close,Volume
 1642248600,EXAM/USDC,1.20,1.35,1.18,1.25,75000
 ```
+</details>
 
-### Token Profile Format
+
+<details>
+<summary>Token Profile Format</summary>
+
 ```json
 {
   "symbol": "EXAM",
@@ -172,34 +175,7 @@ Timestamp,Symbol,Open,High,Low,Close,Volume
   }
 }
 ```
-
-## 🏗️ Architecture Overview
-
-### Core Components
-
-#### `DexScraper` (Main Class)
-- **WebSocket Management**: Secure connections with automatic reconnection
-- **Protocol Decoder**: Binary message parsing and validation
-- **Rate Limiting**: Configurable request throttling
-- **Error Recovery**: Exponential backoff with max retry limits
-
-#### `ScrapingConfig` (Configuration)
-- **Multi-Chain**: Support for 8+ blockchain networks
-- **Flexible Filtering**: By DEX, volume, liquidity, market cap
-- **Ranking Options**: Trending score, volume, price changes
-- **Preset Configs**: Ready-to-use configurations for common scenarios
-
-#### `Models` (Data Structures)
-- **TradingPair**: Complete pair information with typed fields
-- **TokenProfile**: Enhanced metadata with social links
-- **OHLCData**: MetaTrader-compatible candlestick data
-- **ExtractedTokenBatch**: Batch processing with metadata
-
-#### `CLI` (Command Interface)
-- **Rich Integration**: Beautiful tables and live updates
-- **Interactive Mode**: Real-time pair monitoring
-- **Export Options**: Multiple output formats
-- **Filtering UI**: Dynamic configuration through prompts
+</details>
 
 ## ⚙️ Advanced Configuration
 
@@ -245,85 +221,18 @@ scraper = DexScraper(
 )
 ```
 
-## 🛡️ Security & Reliability
-
-### Security Features
-- **SSL/TLS**: All connections use secure WebSocket (WSS)
-- **Input Sanitization**: Comprehensive string cleaning and validation
-- **Dependency Scanning**: Automated security checks with Bandit and Safety
-- **No Secrets**: No API keys or authentication required
-- **Sandboxed**: Read-only access to public market data
-
-### Error Handling & Recovery
-- **Connection Recovery**: Automatic reconnection with exponential backoff
-- **Data Validation**: Multiple layers of input validation
-- **Graceful Degradation**: Continue processing on partial failures
-- **Rate Limiting**: Prevent overwhelming the upstream service
-- **Memory Management**: Efficient handling of large data streams
-
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for complete development setup, testing, and contribution workflow.
-
-## 📄 License
-
-**GPL-3.0** - See [LICENSE](LICENSE) for details.
-
-## ⚖️ Important Disclaimers
-
-### 🔬 Research & Educational Use Only
-
-**THIS SOFTWARE IS PROVIDED FOR RESEARCH AND EDUCATIONAL PURPOSES ONLY**
-
-- ❌ **NOT for trading or investment decisions**
-- ❌ **NOT financial advice or recommendations**
-- ❌ **NOT for commercial use without proper compliance**
-- ✅ **FOR learning about market data structures**
-- ✅ **FOR academic research and analysis**
-- ✅ **FOR understanding WebSocket protocols**
-
-### 🚫 No Affiliation with DexScreener
-
-**THIS PROJECT IS COMPLETELY INDEPENDENT AND UNOFFICIAL**
-
-- 🔹 **NO official relationship** with DexScreener.com
-- 🔹 **NO endorsement** from DexScreener
-- 🔹 **NO warranty** or guarantee of service continuity
-- 🔹 **NO responsibility** for any changes to DexScreener's API
-- 🔹 Users must **comply with DexScreener's Terms of Service**
-
-### ⚠️ Risk Warnings
-
-- **Market Risk**: Cryptocurrency markets are highly volatile and risky
-- **Technical Risk**: This software may contain bugs or inaccuracies
-- **Compliance Risk**: Users are responsible for regulatory compliance
-- **Service Risk**: DexScreener may change or discontinue their API
-- **No Guarantees**: No warranty on data accuracy, availability, or performance
-
-### 📋 Responsible Use Guidelines
-
-- ✅ **DO** use for learning and research
-- ✅ **DO** respect DexScreener's rate limits and ToS
-- ✅ **DO** verify data independently before any decisions
-- ✅ **DO** understand the risks of cryptocurrency markets
-- ❌ **DON'T** use for automated trading without proper risk management
-- ❌ **DON'T** rely solely on this data for financial decisions
-- ❌ **DON'T** abuse the service or violate terms of use
 
 ## 💝 Support Development
 
 If this project helps your research or learning:
 
 - ⭐ **Star this repository**
-- 🐛 **Report issues and bugs**
-- 🤝 **Contribute code or documentation**
+- 🤝 **Contribute code or documentation** We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for complete development setup, testing, and contribution workflow.
 - ☕ **[Buy me a coffee](https://buymeacoffee.com/vincentkoc)**
 - 💖 **[Sponsor on GitHub](https://github.com/sponsors/vincentkoc)**
 
 ---
 
-<div align="center">
-  <h3>🔬 FOR RESEARCH & EDUCATIONAL USE ONLY 🔬</h3>
-  <p><strong>No affiliation with DexScreener • Use at your own risk</strong></p>
-  <p><sub>Built with ❤️ for the DeFi research community</sub></p>
-</div>
+Built with ❤️ for the DeFi research community
