@@ -2,8 +2,7 @@
 """Test edge cases and scenarios identified in ANALYSIS.md."""
 
 import asyncio
-import struct
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 

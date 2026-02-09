@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Test cases for DexScraper main functionality."""
 
-import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from dexscraper import DexScraper
-from dexscraper.config import Chain, DEX, PresetConfigs
+from dexscraper.config import PresetConfigs
 from dexscraper.models import ExtractedTokenBatch, TokenProfile
 
 
@@ -239,6 +238,133 @@ class TestDexScraper:
         headers = kwargs.get("additional_headers") or kwargs.get("extra_headers")
         assert headers is not None
         assert "Origin" not in headers
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("header_param", ["additional_headers", "extra_headers"])
+    async def test_connect_uses_detected_header_parameter(self, header_param):
+        """Connect should pass headers using whichever kwarg the runtime expects."""
+        scraper = DexScraper(max_retries=1)
+        mock_ws = Mock()
+
+        with patch(
+            "dexscraper.scraper._CONNECT_HEADERS_PARAM", header_param
+        ), patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
+            mock_connect.return_value = mock_ws
+            websocket = await scraper._connect()
+
+        assert websocket is mock_ws
+        kwargs = mock_connect.call_args.kwargs
+        assert header_param in kwargs
+        other_param = (
+            "extra_headers" if header_param == "additional_headers" else "additional_headers"
+        )
+        assert other_param not in kwargs
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("env_value", "supports_proxy", "expected_proxy", "should_set_proxy"),
+        [
+            ("false", True, None, True),
+            ("http://127.0.0.1:8080", True, "http://127.0.0.1:8080", True),
+            ("false", False, None, False),
+            ("http://127.0.0.1:8080", False, None, False),
+        ],
+    )
+    async def test_connect_proxy_contract(
+        self, env_value, supports_proxy, expected_proxy, should_set_proxy
+    ):
+        """Proxy kwarg should follow env override only when runtime supports it."""
+        scraper = DexScraper(max_retries=1)
+        mock_ws = Mock()
+
+        with patch.dict("os.environ", {"DEXSCRAPER_PROXY": env_value}), patch(
+            "dexscraper.scraper._CONNECT_SUPPORTS_PROXY", supports_proxy
+        ), patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
+            mock_connect.return_value = mock_ws
+            websocket = await scraper._connect()
+
+        assert websocket is mock_ws
+        kwargs = mock_connect.call_args.kwargs
+        if should_set_proxy:
+            assert kwargs["proxy"] == expected_proxy
+        else:
+            assert "proxy" not in kwargs
+
+    @pytest.mark.asyncio
+    async def test_connect_retries_and_recovers(self):
+        """Connection should retry after failure and reset retry counter on success."""
+        scraper = DexScraper(max_retries=2)
+        mock_ws = Mock()
+
+        with patch.object(scraper, "_rate_limit", new=AsyncMock()), patch.object(
+            scraper, "_get_backoff_delay", return_value=0.01
+        ), patch("dexscraper.scraper.asyncio.sleep", new_callable=AsyncMock) as sleep_mock, patch(
+            "websockets.connect", new_callable=AsyncMock
+        ) as mock_connect:
+            mock_connect.side_effect = [Exception("temporary failure"), mock_ws]
+            websocket = await scraper._connect()
+
+        assert websocket is mock_ws
+        assert mock_connect.await_count == 2
+        sleep_mock.assert_awaited_once()
+        assert scraper._retry_count == 0
+
+    @pytest.mark.asyncio
+    async def test_extract_token_data_missing_pairs_returns_empty_batch(self):
+        """If response has no 'pairs' section, extraction should return empty batch."""
+        scraper = DexScraper()
+        websocket = Mock()
+        websocket.recv = AsyncMock(side_effect=[b"handshake", b"not-a-pairs-payload"])
+        websocket.close = AsyncMock()
+
+        with patch.object(scraper, "_connect", new=AsyncMock(return_value=websocket)):
+            batch = await scraper.extract_token_data()
+
+        assert isinstance(batch, ExtractedTokenBatch)
+        assert batch.total_extracted == 0
+        websocket.close.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_extract_token_data_success_path_uses_extracted_tokens(self):
+        """Extraction should propagate tokens returned by internal extractor."""
+        scraper = DexScraper()
+        websocket = Mock()
+        websocket.recv = AsyncMock(side_effect=[b"handshake", b"xxpairs" + b"A" * 64])
+        websocket.close = AsyncMock()
+        extracted_tokens = [TokenProfile(symbol="TEST", price=0.001)]
+
+        with patch.object(scraper, "_connect", new=AsyncMock(return_value=websocket)), patch.object(
+            scraper, "_extract_all_tokens", new=AsyncMock(return_value=extracted_tokens)
+        ):
+            batch = await scraper.extract_token_data()
+
+        assert batch.total_extracted == 1
+        assert batch.tokens[0].symbol == "TEST"
+        websocket.close.assert_awaited_once()
+
+    def test_extract_token_data_sync_uses_asyncio_run(self):
+        """Sync API should delegate to asyncio.run when no loop is running."""
+        scraper = DexScraper()
+        expected = ExtractedTokenBatch(tokens=[TokenProfile(symbol="SYNC", price=0.1)])
+
+        def fake_run(coro):
+            coro.close()
+            return expected
+
+        with patch(
+            "dexscraper.scraper.asyncio.get_running_loop", side_effect=RuntimeError
+        ), patch("dexscraper.scraper.asyncio.run", side_effect=fake_run) as run_mock:
+            result = scraper.extract_token_data_sync()
+
+        run_mock.assert_called_once()
+        assert result is expected
+
+    @pytest.mark.asyncio
+    async def test_extract_token_data_sync_raises_inside_event_loop(self):
+        """Sync API should fail fast when called from async context."""
+        scraper = DexScraper()
+        with pytest.raises(RuntimeError, match="cannot run inside an active event loop"):
+            scraper.extract_token_data_sync()
 
 
 class TestDexScraperIntegration:

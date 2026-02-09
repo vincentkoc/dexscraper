@@ -15,7 +15,7 @@ from dexscraper.cli import (
     parse_timeframe,
     SlickCLI,
 )
-from dexscraper.config import Chain, DEX, Filters, RankBy, ScrapingConfig, Timeframe
+from dexscraper.config import Chain, DEX, RankBy, ScrapingConfig, Timeframe
 from dexscraper.models import ExtractedTokenBatch, TokenProfile
 
 
@@ -231,6 +231,44 @@ class TestConfigBuilding:
         config = build_config_from_args(args)
         assert config.rank_by == RankBy.TRENDING_SCORE_H1
 
+    @pytest.mark.parametrize(
+        ("mode", "expected_rank"),
+        [
+            ("top", RankBy.VOLUME),
+            ("gainers", RankBy.PRICE_CHANGE_H24),
+            ("new", RankBy.TRENDING_SCORE_H6),
+            ("transactions", RankBy.TRANSACTIONS),
+            ("boosted", RankBy.TRENDING_SCORE_H6),
+        ],
+    )
+    def test_build_config_preset_modes(self, mode, expected_rank):
+        """Each preset mode should resolve to its expected ranking strategy."""
+        args = Mock()
+        args.mode = mode
+        args.chain = Chain.SOLANA
+        args.chains = None
+        args.timeframe = Timeframe.H1
+        args.min_liquidity = None
+        args.min_txns = None
+        args.min_volume = None
+        args.max_age = None
+
+        config = build_config_from_args(args)
+
+        assert isinstance(config, ScrapingConfig)
+        assert config.rank_by == expected_rank
+
+    def test_build_config_mode_uses_first_chain_from_chains(self):
+        """Preset modes should prefer args.chains[0] over args.chain."""
+        args = Mock()
+        args.mode = "trending"
+        args.chain = Chain.SOLANA
+        args.chains = [Chain.BASE, Chain.ETHEREUM]
+        args.timeframe = Timeframe.H24
+
+        config = build_config_from_args(args)
+        assert config.filters.chain_ids == [Chain.BASE]
+
 
 class TestCallbacks:
     """Test callback function creation."""
@@ -309,8 +347,6 @@ class TestSlickCLI:
     def test_rich_display_creation(self):
         """Test Rich display manager creation."""
         try:
-            from rich.console import Console
-
             display = SlickCLI()
 
             assert display.extraction_count == 0
@@ -322,8 +358,6 @@ class TestSlickCLI:
     def test_rich_table_creation(self):
         """Test Rich table creation with token data."""
         try:
-            from rich.console import Console
-
             display = SlickCLI()
 
             tokens = [
@@ -423,7 +457,14 @@ class TestCLIIntegration:
             full_args = ["dexscraper", "--once"] + test_args
 
             with patch("sys.argv", full_args):
-                with patch("dexscraper.cli.DexScraper"):
+                with patch("dexscraper.cli.DexScraper") as mock_scraper_class:
+                    mock_scraper = Mock()
+                    mock_scraper.extract_token_data = AsyncMock(
+                        return_value=ExtractedTokenBatch(
+                            tokens=[TokenProfile(symbol="TEST", price=0.001)]
+                        )
+                    )
+                    mock_scraper_class.return_value = mock_scraper
                     try:
                         # This tests that argument parsing doesn't fail
                         await main()

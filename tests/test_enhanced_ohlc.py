@@ -5,9 +5,8 @@ import asyncio
 import json
 from datetime import datetime
 
-import pytest
 
-from dexscraper import DexScraper, ExtractedTokenBatch, TokenProfile
+from dexscraper import DexScraper
 
 
 async def test_enhanced_ohlc_output():
@@ -34,7 +33,7 @@ async def test_enhanced_ohlc_output():
     print(f"\n🏆 Testing OHLC output with top {len(top_tokens)} tokens")
 
     # Test 1: Basic OHLC format
-    print(f"\n📊 TEST 1: BASIC OHLC FORMAT")
+    print("\n📊 TEST 1: BASIC OHLC FORMAT")
     print("-" * 40)
     print("Format: SYMBOL,TIMESTAMP,OPEN,HIGH,LOW,CLOSE,VOLUME")
 
@@ -50,7 +49,7 @@ async def test_enhanced_ohlc_output():
     print(f"✅ Generated {ohlc_count} OHLC records")
 
     # Test 2: MT5 format
-    print(f"\n📈 TEST 2: MT5 FORMAT")
+    print("\n📈 TEST 2: MT5 FORMAT")
     print("-" * 40)
     print("Format: YYYY.MM.DD HH:MM:SS,OPEN,HIGH,LOW,CLOSE,VOLUME")
 
@@ -64,7 +63,7 @@ async def test_enhanced_ohlc_output():
     print(f"✅ Generated {mt5_count} MT5 records")
 
     # Test 3: Batch OHLC conversion
-    print(f"\n🔄 TEST 3: BATCH OHLC CONVERSION")
+    print("\n🔄 TEST 3: BATCH OHLC CONVERSION")
     print("-" * 40)
 
     batch_ohlc = batch.to_ohlc_batch("1m")
@@ -80,7 +79,7 @@ async def test_enhanced_ohlc_output():
     print(f"✅ Batch processing: {len(batch_ohlc)} records")
 
     # Test 4: Legacy compatibility
-    print(f"\n🔄 TEST 4: LEGACY COMPATIBILITY")
+    print("\n🔄 TEST 4: LEGACY COMPATIBILITY")
     print("-" * 40)
 
     trading_pairs = batch.to_trading_pairs()
@@ -99,7 +98,7 @@ async def test_enhanced_ohlc_output():
     print(f"✅ Legacy compatibility: {legacy_ohlc_count} OHLC records")
 
     # Test 5: Real-time streaming simulation
-    print(f"\n🔄 TEST 5: STREAMING SIMULATION")
+    print("\n🔄 TEST 5: STREAMING SIMULATION")
     print("-" * 40)
 
     print("Simulating 3 extraction cycles...")
@@ -123,10 +122,10 @@ async def test_enhanced_ohlc_output():
         if cycle < 2:
             await asyncio.sleep(2)
 
-    print(f"✅ Streaming simulation complete")
+    print("✅ Streaming simulation complete")
 
     # Test 6: Enhanced JSON output
-    print(f"\n📄 TEST 6: ENHANCED JSON OUTPUT")
+    print("\n📄 TEST 6: ENHANCED JSON OUTPUT")
     print("-" * 40)
 
     # Get fresh batch
@@ -169,21 +168,21 @@ async def test_enhanced_ohlc_output():
         with open("enhanced_ohlc_output.json", "w") as f:
             json.dump(enhanced_output, f, indent=2, default=str)
 
-        print(f"Enhanced JSON output saved to: enhanced_ohlc_output.json")
+        print("Enhanced JSON output saved to: enhanced_ohlc_output.json")
         print(f"Records: {len(enhanced_output['ohlc_data'])}")
-        print(f"✅ Enhanced JSON format complete")
+        print("✅ Enhanced JSON format complete")
 
     # Summary
-    print(f"\n🎯 TEST SUMMARY")
+    print("\n🎯 TEST SUMMARY")
     print("=" * 60)
     print(f"✅ Basic OHLC format: {ohlc_count} records")
     print(f"✅ MT5 format: {mt5_count} records")
     print(f"✅ Batch processing: {len(batch_ohlc)} records")
     print(f"✅ Legacy compatibility: {legacy_ohlc_count} records")
-    print(f"✅ Streaming simulation: 3 cycles completed")
-    print(f"✅ Enhanced JSON output: Saved to file")
+    print("✅ Streaming simulation: 3 cycles completed")
+    print("✅ Enhanced JSON output: Saved to file")
 
-    print(f"\n🚀 ALL OHLC/MT5 TESTS PASSED!")
+    print("\n🚀 ALL OHLC/MT5 TESTS PASSED!")
 
 
 async def test_enhanced_streaming():
