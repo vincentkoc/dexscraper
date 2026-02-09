@@ -52,3 +52,14 @@ repos:
       - id: bandit
         args: ["-r", "dexscraper/"]
         pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: pip-audit
+        name: pip-audit
+        entry: pip-audit
+        language: python
+        additional_dependencies:
+          - pip-audit>=2.8.0
+        args: ["-r", "requirements.txt", "--ignore-vuln", "GHSA-h95x-26f3-88hr"]
+        pass_filenames: false

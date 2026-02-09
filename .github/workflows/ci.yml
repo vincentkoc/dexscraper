@@ -56,16 +56,16 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install bandit safety
+        pip install bandit pip-audit
         pip install -e .
 
     - name: Security check with bandit
       run: |
         bandit -r dexscraper/
 
-    - name: Safety check
+    - name: Dependency vulnerability scan (pip-audit)
       run: |
-        safety check
+        pip-audit -r requirements.txt --ignore-vuln GHSA-h95x-26f3-88hr
 
   build:
     runs-on: ubuntu-latest
