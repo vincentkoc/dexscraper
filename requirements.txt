@@ -1,2 +1,2 @@
 websockets>=15.0
-cloudscraper @ git+https://github.com/VeNoMouS/cloudscraper.git@3.0.0
+cloudscraper>=1.2.71
