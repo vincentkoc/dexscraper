@@ -1,4 +1,4 @@
-<h1 align="center">Dexscraper</h1>
+<h1 align="center">👻 Dexscraper</h1>
 
 <p align="center">
   <strong>Real-time DexScreener market data in one CLI/SDK.</strong>
@@ -14,20 +14,19 @@
 
 > [!IMPORTANT]
 > This project is independent and not affiliated with DexScreener.
-> Use at your own risk and comply with DexScreener terms.
-> For research purposes only.
+> Use at your own risk f or research purposes only and comply with DexScreener terms.
 
-## Install
+## Install Dexscraper
 
 <details open>
 
-<summary>Install with PIP or UV</summary>
+<summary>Install with `pip` or `uv`</summary>
 
 ```bash
+# pip install
 pip install dexscraper
-```
 
-```bash
+# or uv install
 uv pip install dexscraper
 ```
 
@@ -37,6 +36,7 @@ uv pip install dexscraper
 <summary>Alternative: Development install</summary>
 
 ```bash
+# download and install from main branch
 git clone https://github.com/vincentkoc/dexscraper.git
 cd dexscraper
 pip install -e .[dev]
@@ -60,7 +60,8 @@ DexScreener data is useful, but scraping it consistently is painful: protocol ch
 ## Commands
 
 ```bash
-dexscraper interactive
+dexscraper # streaming json
+dexscraper interactive # gui mode
 dexscraper trending --chain solana --limit 10 --once
 dexscraper top --chain ethereum --min-liquidity 50000 --once
 dexscraper trending --chain solana --format json --output pairs.json --once
@@ -97,6 +98,4 @@ Open an issue for bugs, start a discussion for questions, and star the repo if i
 
 ---
 
-<p>
-  <sub>Made by <a href="https://github.com/vincentkoc">Vincent Koc</a> · <a href="LICENSE">GPL-3.0</a></sub>
-</p>
+Made with 💙 by <a href="https://github.com/vincentkoc">Vincent Koc</a> · <a href="LICENSE">GPL-3.0</a>
