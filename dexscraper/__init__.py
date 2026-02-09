@@ -1,8 +1,6 @@
 """DexScreener WebSocket scraper package for real-time cryptocurrency data."""
 
-__version__ = "0.1.0"
-__author__ = "Vincent Koc"
-
+from importlib.metadata import PackageNotFoundError, version as package_version
 from .config import (
     Chain,
     DEX,
@@ -23,6 +21,23 @@ from .models import (
     VolumeData,
 )
 from .scraper import DexScraper
+
+
+def _resolve_version() -> str:
+    """Resolve package version from installed metadata, with SCM fallback."""
+    try:
+        return package_version("dexscraper")
+    except PackageNotFoundError:
+        try:
+            from ._version import version as scm_version
+
+            return scm_version
+        except Exception:
+            return "0.0.0"
+
+
+__version__ = _resolve_version()
+__author__ = "Vincent Koc"
 
 __all__ = [
     "DexScraper",
