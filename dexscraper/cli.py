@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import json
 import sys
 import time
 from datetime import datetime
@@ -276,14 +277,14 @@ class SlickCLI:
                 self.console.print(table)
 
                 self.console.print(
-                    "\n[bright_black]Press Ctrl+C to return to menu...[/muted]"
+                    "\n[bright_black]Press Ctrl+C to return to menu...[/bright_black]"
                 )
 
                 # Wait 5 seconds
                 await asyncio.sleep(5)
 
         except KeyboardInterrupt:
-            self.console.print("\n[bright_yellow]Returning to menu...[/warning]")
+            self.console.print("\n[bright_yellow]Returning to menu...[/bright_yellow]")
             return
 
     async def export_mode(self) -> None:
@@ -598,7 +599,9 @@ def create_callback(format_type: str) -> Callable[[list[TradingPair]], None]:
     return callback
 
 
-def create_token_callback(format_type: str) -> Callable[[ExtractedTokenBatch], None]:
+def create_token_callback(
+    format_type: str, limit: int = 20
+) -> Callable[[ExtractedTokenBatch], None]:
     """Create callback for TokenProfile batch data."""
     console = Console() if RICH_AVAILABLE else None
     rich_display = SlickCLI() if console else None
@@ -612,7 +615,7 @@ def create_token_callback(format_type: str) -> Callable[[ExtractedTokenBatch], N
                 "extraction_timestamp": batch.extraction_timestamp,
                 "total_extracted": batch.total_extracted,
                 "high_confidence_count": batch.high_confidence_count,
-                "tokens": [token.to_dict() for token in batch.get_top_tokens(20)],
+                "tokens": [token.to_dict() for token in batch.get_top_tokens(limit)],
             }
             print(json.dumps(output, separators=(",", ":"), default=str))
         elif format_type == "ohlcv":
@@ -632,13 +635,64 @@ def create_token_callback(format_type: str) -> Callable[[ExtractedTokenBatch], N
             print(
                 f"📊 Extracted {batch.total_extracted} tokens, {batch.high_confidence_count} high-confidence"
             )
-            for token in batch.get_top_tokens(10):
+            for token in batch.get_top_tokens(min(limit, 10)):
                 if token.price:
                     print(
                         f"  {token.get_display_name()}: ${token.price:.8f} | Vol: ${token.volume_24h:,.0f}"
                     )
 
     return callback
+
+
+def build_batch_output(
+    batch: ExtractedTokenBatch, format_type: str, limit: int = 20
+) -> str:
+    """Serialize a token batch for one-shot CLI output."""
+    tokens = batch.get_top_tokens(limit)
+    limited_batch = ExtractedTokenBatch(tokens=tokens)
+
+    if format_type == "json":
+        payload = {
+            "type": "enhanced_tokens",
+            "extraction_timestamp": batch.extraction_timestamp,
+            "total_extracted": batch.total_extracted,
+            "high_confidence_count": batch.high_confidence_count,
+            "tokens": [token.to_dict() for token in tokens],
+        }
+        return json.dumps(payload, separators=(",", ":"), default=str)
+
+    if format_type == "ohlcv":
+        return limited_batch.to_csv_string("ohlcv")
+
+    if format_type == "ohlcvt":
+        return limited_batch.to_csv_string("ohlcvt")
+
+    if format_type == "ohlc":
+        return "\n".join(
+            f"TOKEN,{ohlc.timestamp},{ohlc.open},{ohlc.high},{ohlc.low},{ohlc.close},{ohlc.volume}"
+            for ohlc in limited_batch.to_ohlc_batch()
+        )
+
+    if format_type == "mt5":
+        return "\n".join(ohlc.to_mt5_format() for ohlc in limited_batch.to_ohlc_batch())
+
+    return ""
+
+
+def normalize_legacy_cli_args(argv: list[str]) -> list[str]:
+    """Map legacy README subcommands to current flag-based CLI."""
+    if not argv:
+        return argv
+
+    command = argv[0].lower()
+    if command == "interactive":
+        return ["--format", "rich", *argv[1:]]
+
+    supported_modes = {"trending", "top", "gainers", "new", "transactions", "boosted"}
+    if command in supported_modes:
+        return ["--mode", command, *argv[1:]]
+
+    return argv
 
 
 def parse_chain(value: str) -> Chain:
@@ -814,6 +868,17 @@ Examples:
         "--once", action="store_true", help="Get data once and exit (don't stream)"
     )
     parser.add_argument(
+        "--limit",
+        type=int,
+        default=20,
+        help="Maximum number of tokens to output per update (default: 20)",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        help="Write output to file (supported with --once)",
+    )
+    parser.add_argument(
         "--cloudflare-bypass",
         action="store_true",
         help="Enable Cloudflare bypass (experimental)",
@@ -932,7 +997,7 @@ Examples:
         "--min-ads", type=int, help="Minimum recent purchased impressions"
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(normalize_legacy_cli_args(sys.argv[1:]))
 
     # Check if Rich is available for rich format
     if args.format == "rich" and not RICH_AVAILABLE:
@@ -961,14 +1026,25 @@ Examples:
     if args.once:
         batch = await scraper.extract_token_data()
         if batch.tokens:
-            callback = create_token_callback(args.format)
-            callback(batch)
+            if args.output:
+                serialized = build_batch_output(batch, args.format, args.limit)
+                with open(args.output, "w", encoding="utf-8") as output_file:
+                    output_file.write(serialized)
+                    if serialized and not serialized.endswith("\n"):
+                        output_file.write("\n")
+            else:
+                callback = create_token_callback(args.format, args.limit)
+                callback(batch)
         else:
             print("Failed to extract token data", file=sys.stderr)
             sys.exit(1)
     else:
+        if args.output:
+            print("--output is supported only with --once", file=sys.stderr)
+            sys.exit(2)
+
         # Stream with scraper
-        callback = create_token_callback(args.format)
+        callback = create_token_callback(args.format, args.limit)
 
         async def token_stream() -> None:
             while True:

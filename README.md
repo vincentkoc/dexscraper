@@ -66,41 +66,41 @@ dexscraper interactive
 
 **Simple Trending Pairs**:
 ```bash
-dexscraper trending --chain solana --limit 10
+dexscraper trending --chain solana --limit 10 --once
 ```
 
 **Export to File**:
 ```bash
-dexscraper trending --chain ethereum --output pairs.json --format json
-dexscraper trending --chain solana --output ohlc.csv --format ohlc-csv
+dexscraper trending --chain ethereum --output pairs.json --format json --once
+dexscraper trending --chain solana --output ohlc.csv --format ohlcvt --once
 ```
 
 **Filter by DEX and Volume**:
 ```bash
-dexscraper trending --dex raydium,orca --min-volume 50000 --min-liquidity 10000
+dexscraper trending --dexs raydium,orca --min-volume 50000 --min-liquidity 10000 --once
 ```
 
 ### Programmatic Usage
 
 ```python
 import asyncio
-from dexscraper import DexScraper, ScrapingConfig, Chain, RankBy
-
-# Simple trending pairs
-async def get_trending():
-    scraper = DexScraper(debug=True)
-    pairs = await scraper.get_pairs(limit=10)
-    for pair in pairs:
-        print(f"{pair.base_token_symbol}: ${pair.price_data.usd:.6f}")
+from dexscraper import DexScraper, ScrapingConfig, Chain, RankBy, Filters, Timeframe
 
 # Custom configuration
 config = ScrapingConfig(
-    chains=[Chain.SOLANA, Chain.ETHEREUM],
+    timeframe=Timeframe.H1,
     rank_by=RankBy.VOLUME,
-    min_liquidity_usd=50000
+    filters=Filters(chain_ids=[Chain.SOLANA], liquidity_min=50000),
 )
 
 scraper = DexScraper(config=config, use_cloudflare_bypass=True)
+
+async def get_trending():
+    batch = await scraper.extract_token_data()
+    for token in batch.get_top_tokens(10):
+        if token.price is not None:
+            print(f"{token.get_display_name()}: ${token.price:.6f}")
+
 asyncio.run(get_trending())
 ```
 
@@ -108,11 +108,13 @@ asyncio.run(get_trending())
 ```python
 async def stream_pairs():
     scraper = DexScraper()
-    async for batch in scraper.stream_pairs():
-        print(f"Received {len(batch.pairs)} pairs")
-        for pair in batch.pairs:
-            if pair.price_data.change_24h and pair.price_data.change_24h > 10:
-                print(f"🚀 {pair.base_token_symbol} +{pair.price_data.change_24h:.1f}%")
+    def on_batch(batch):
+        print(f"Received {batch.total_extracted} tokens")
+        for token in batch.get_top_tokens(10):
+            if token.change_24h and token.change_24h > 10:
+                print(f"🚀 {token.get_display_name()} +{token.change_24h:.1f}%")
+
+    await scraper.stream_pairs(callback=on_batch, use_enhanced_extraction=True)
 
 asyncio.run(stream_pairs())
 ```
@@ -187,10 +189,7 @@ from dexscraper import PresetConfigs
 config = PresetConfigs.trending()
 
 # High-volume Ethereum pairs
-config = PresetConfigs.high_volume(chain=Chain.ETHEREUM)
-
-# Multi-chain DeFi focus
-config = PresetConfigs.defi_focus()
+config = PresetConfigs.top_volume(chain=Chain.ETHEREUM)
 ```
 
 ### Custom Configuration
@@ -198,15 +197,16 @@ config = PresetConfigs.defi_focus()
 from dexscraper import ScrapingConfig, Chain, RankBy, DEX, Filters
 
 config = ScrapingConfig(
-    chains=[Chain.SOLANA, Chain.BASE],
+    timeframe=Timeframe.H1,
     rank_by=RankBy.VOLUME,
     order=Order.DESC,
-    dexes=[DEX.RAYDIUM, DEX.ORCA],
     filters=Filters(
-        min_liquidity_usd=10000,
-        min_volume_24h_usd=50000,
-        min_fdv_usd=100000,
-        max_age_hours=72
+        chain_ids=[Chain.SOLANA, Chain.BASE],
+        dex_ids=[DEX.RAYDIUM, DEX.ORCA],
+        liquidity_min=10000,
+        volume_h24_min=50000,
+        fdv_min=100000,
+        pair_age_max=72,
     )
 )
 ```
