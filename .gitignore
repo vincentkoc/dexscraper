@@ -168,3 +168,4 @@ cython_debug/
 data/
 output/
 *.json
+dexscraper/_version.py

@@ -15,7 +15,7 @@ repos:
       - id: debug-statements
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
+    rev: v3.19.1
     hooks:
       - id: pyupgrade
         args: [--py39-plus]
@@ -33,7 +33,11 @@ repos:
     rev: v1.18.2
     hooks:
       - id: mypy
-        args: [--config-file, pyproject.toml]
+        args: [--config-file, pyproject.toml, dexscraper]
+        pass_filenames: false
+        additional_dependencies:
+          - rich>=13.0.0
+          - setuptools_scm[toml]>=6.2
         exclude: "dexscraper/_version\\.py"
 
   - repo: https://github.com/codespell-project/codespell
