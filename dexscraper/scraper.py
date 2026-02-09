@@ -1115,13 +1115,13 @@ class DexScraper:
 
             # Type-based bonuses
             token_type = str(token_info.get("type", ""))
-            if token_type == "whitelisted":
+            if token_type == "whitelisted":  # nosec B105 - token classifier label
                 score += 0.5  # Strong preference for known tokens
-            elif token_type == "dollar_prefixed":
+            elif token_type == "dollar_prefixed":  # nosec B105 - token classifier label
                 score += 0.3
-            elif token_type == "context_based":
+            elif token_type == "context_based":  # nosec B105 - token classifier label
                 score += 0.2
-            elif token_type == "crypto_symbol":
+            elif token_type == "crypto_symbol":  # nosec B105 - token classifier label
                 score += 0.1
 
             return score

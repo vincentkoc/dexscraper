@@ -32,9 +32,9 @@ class CloudflareBypass:
         self._last_session_update = 0.0
         try:
             self.scraper.cookies.clear()
-        except Exception:
+        except Exception as exc:
             # Cookie jar type can vary; best effort only.
-            pass
+            logger.debug("Failed to clear cookies during session refresh: %s", exc)
         self.scraper = self._create_scraper()
 
     async def _fetch_main_site(self, main_site_url: str) -> Optional[Any]:
