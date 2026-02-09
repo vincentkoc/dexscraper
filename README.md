@@ -19,9 +19,19 @@
 
 ## Install
 
+<details open>
+
+<summary>Install with PIP or UV</summary>
+
 ```bash
 pip install dexscraper
 ```
+
+```bash
+uv pip install dexscraper
+```
+
+</details>
 
 <details>
 <summary>Alternative: Development install</summary>
@@ -85,6 +95,8 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Open an issue for bugs, start a discussion for questions, and star the repo if it helps.
 
-<p align="center">
+---
+
+<p>
   <sub>Made by <a href="https://github.com/vincentkoc">Vincent Koc</a> · <a href="LICENSE">GPL-3.0</a></sub>
 </p>
