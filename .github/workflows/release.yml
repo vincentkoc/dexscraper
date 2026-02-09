@@ -6,6 +6,12 @@ name: Release
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag to build/publish (for example: v0.1.3)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -18,25 +24,36 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       package_version: ${{ steps.version.outputs.value }}
+      release_tag: ${{ steps.release_meta.outputs.tag }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref }}
 
-      - name: Verify tag format
+      - name: Resolve release tag
+        id: release_meta
+        env:
+          INPUT_TAG: ${{ inputs.tag_name }}
         run: |
-          if [[ ! "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
+          set -euo pipefail
+          TAG="${INPUT_TAG:-${GITHUB_REF_NAME}}"
+          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
             echo "❌ Invalid tag format. Expected: v1.2.3 (or prerelease like v1.2.3-rc1)"
             exit 1
           fi
-          echo "✅ Tag format is valid: ${{ github.ref_name }}"
+          echo "✅ Tag format is valid: ${TAG}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag format
+        run: |
+          echo "✅ Using release tag: ${{ steps.release_meta.outputs.tag }}"
 
       - name: Verify we're on the exact tag commit
         run: |
-          TAG_COMMIT="$(git rev-list -n 1 ${{ github.ref_name }})"
+          TAG_COMMIT="$(git rev-list -n 1 ${{ steps.release_meta.outputs.tag }})"
           HEAD_COMMIT="$(git rev-parse HEAD)"
           echo "Current commit: ${HEAD_COMMIT}"
           echo "Tag commit: ${TAG_COMMIT}"
@@ -48,7 +65,7 @@ jobs:
 
       - name: Verify tag commit is on main branch
         run: |
-          TAG_COMMIT="$(git rev-list -n 1 ${{ github.ref_name }})"
+          TAG_COMMIT="$(git rev-list -n 1 ${{ steps.release_meta.outputs.tag }})"
           git fetch --no-tags origin main
           if ! git merge-base --is-ancestor "${TAG_COMMIT}" origin/main; then
             echo "❌ Tag commit is not on origin/main"
@@ -60,7 +77,7 @@ jobs:
       - name: Derive package version
         id: version
         run: |
-          echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+          echo "value=${{ steps.release_meta.outputs.tag }}" | sed 's/^value=v/value=/' >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -75,10 +92,23 @@ jobs:
       - name: Build package
         run: |
           echo "🔨 Building Python package..."
+          export SETUPTOOLS_SCM_PRETEND_VERSION="${{ steps.version.outputs.value }}"
           python -m build
 
           echo "📦 Package contents:"
           ls -la dist/
+
+          echo "🔍 Verifying built version matches tag..."
+          EXPECTED_VERSION="${{ steps.version.outputs.value }}"
+          if ! ls dist/*"${EXPECTED_VERSION}"* >/dev/null 2>&1; then
+            echo "❌ Built artifacts do not contain expected version: ${EXPECTED_VERSION}"
+            exit 1
+          fi
+          if ls dist/*dev* >/dev/null 2>&1; then
+            echo "❌ Refusing to publish dev artifacts from tag release."
+            ls -la dist/
+            exit 1
+          fi
 
           echo "✅ Checking package integrity..."
           python -m twine check dist/*
@@ -86,7 +116,7 @@ jobs:
       - name: Upload release assets
         uses: actions/upload-artifact@v4
         with:
-          name: release-assets-${{ github.ref_name }}
+          name: release-assets-${{ steps.release_meta.outputs.tag }}
           path: |
             dist
 
@@ -103,7 +133,7 @@ jobs:
       - name: Download release assets
         uses: actions/download-artifact@v4
         with:
-          name: release-assets-${{ github.ref_name }}
+          name: release-assets-${{ needs.build.outputs.release_tag }}
           path: release-assets
 
       - name: Publish release from Release Drafter
@@ -111,10 +141,10 @@ jobs:
         uses: release-drafter/release-drafter@v6
         with:
           publish: true
-          tag: ${{ github.ref_name }}
+          tag: ${{ needs.build.outputs.release_tag }}
           version: ${{ needs.build.outputs.package_version }}
-          name: "🚀 DexScraper ${{ github.ref_name }}"
-          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
+          name: "🚀 DexScraper ${{ needs.build.outputs.release_tag }}"
+          prerelease: ${{ contains(needs.build.outputs.release_tag, 'beta') || contains(needs.build.outputs.release_tag, 'alpha') || contains(needs.build.outputs.release_tag, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -129,20 +159,20 @@ jobs:
           if [ -n "${DRAFTER_BODY}" ] && ! printf '%s' "${DRAFTER_BODY}" | grep -qi '^.*No changes.*$'; then
             printf '%s\n' "${DRAFTER_BODY}" > "${NOTES_FILE}"
           else
-            bash scripts/generate-release-notes.sh "${GITHUB_REF_NAME}" "${NOTES_FILE}"
+            bash scripts/generate-release-notes.sh "${{ needs.build.outputs.release_tag }}" "${NOTES_FILE}"
           fi
 
       - name: Update release notes from prepared file
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release edit "${{ github.ref_name }}" --notes-file release-assets/release-notes.md
+          gh release edit "${{ needs.build.outputs.release_tag }}" --notes-file release-assets/release-notes.md
 
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.ref_name }}" release-assets/dist/* --clobber
+          gh release upload "${{ needs.build.outputs.release_tag }}" release-assets/dist/* --clobber
 
   pypi_publish:
     name: Publish To PyPI
@@ -156,7 +186,7 @@ jobs:
       - name: Download release assets
         uses: actions/download-artifact@v4
         with:
-          name: release-assets-${{ github.ref_name }}
+          name: release-assets-${{ needs.build.outputs.release_tag }}
           path: release-assets
 
       - name: Deploy to PyPI
@@ -168,7 +198,7 @@ jobs:
 
       - name: Post-release verification
         run: |
-          echo "🎉 Release ${{ github.ref_name }} completed successfully!"
+          echo "🎉 Release ${{ needs.build.outputs.release_tag }} completed successfully!"
           echo "📦 PyPI: https://pypi.org/project/dexscraper/${{ needs.build.outputs.package_version }}/"
-          echo "🚀 GitHub: https://github.com/vincentkoc/dexscraper/releases/tag/${{ github.ref_name }}"
+          echo "🚀 GitHub: https://github.com/vincentkoc/dexscraper/releases/tag/${{ needs.build.outputs.release_tag }}"
           echo "💡 Install with: pip install dexscraper==${{ needs.build.outputs.package_version }}"
