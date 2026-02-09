@@ -5,45 +5,39 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+      - id: check-json
+      - id: check-toml
       - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: detect-private-key
       - id: check-merge-conflict
+      - id: check-case-conflict
       - id: debug-statements
 
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.2
     hooks:
-      - id: black
-        language_version: python3
-        args: [--line-length=88]
-        exclude: 'dexscraper/_version\.py'
+      - id: pyupgrade
+        args: [--py39-plus]
 
-  - repo: https://github.com/PyCQA/isort
-    rev: 6.0.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.6
     hooks:
-      - id: isort
-        args: [--profile, black, --line-length=88]
-        exclude: 'dexscraper/_version\.py'
+      - id: ruff
+        args: [--fix, --show-fixes]
+        exclude: "dexscraper/_version\\.py"
+      - id: ruff-format
+        exclude: "dexscraper/_version\\.py"
 
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.3.0
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2
     hooks:
-      - id: flake8
-        args: [--config=setup.cfg]
-        exclude: 'dexscraper/_version\.py'
+      - id: mypy
+        args: [--config-file, pyproject.toml]
+        exclude: "dexscraper/_version\\.py"
 
-# Temporarily disabled mypy to focus on core functionality
-# - repo: https://github.com/pre-commit/mirrors-mypy
-#   rev: v1.17.1
-#   hooks:
-#     - id: mypy
-#       additional_dependencies: [types-requests]
-#       args: [--ignore-missing-imports, --no-strict-optional]
-#       exclude: '^(tests/|dexscraper/_version\.py)'
-
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.6
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
     hooks:
-      - id: bandit
-        args: [-c, pyproject.toml]
-        additional_dependencies: ["bandit[toml]"]
-        exclude: '^(tests/|dexscraper/_version\.py)'
+      - id: codespell
+        args: ["--skip=*.json,*.jsonl,*.ipynb"]
