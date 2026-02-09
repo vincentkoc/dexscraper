@@ -24,6 +24,8 @@ from .config import PresetConfigs, ScrapingConfig
 from .models import ExtractedTokenBatch, TokenProfile, TradingPair
 
 logger = logging.getLogger(__name__)
+_BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+_BASE58_ALPHABET_SET = set(_BASE58_ALPHABET)
 
 _CONNECT_SIGNATURE = inspect.signature(websockets.connect)
 _CONNECT_SUPPORTS_PROXY = "proxy" in _CONNECT_SIGNATURE.parameters
@@ -362,11 +364,23 @@ class DexScraper:
             address = address_info.get("address")
             if not isinstance(address, str):
                 continue
+            if not self._is_probable_solana_address(address):
+                continue
 
             address_type = str(address_info.get("type", ""))
             if address_type == "SOL_token":
                 profile.quote_address = profile.quote_address or address
-            elif not profile.token_address:
+                continue
+
+            if address in {
+                profile.token_address,
+                profile.pair_address,
+                profile.creator_address,
+                profile.quote_address,
+            }:
+                continue
+
+            if not profile.token_address:
                 profile.token_address = address
             elif not profile.pair_address:
                 profile.pair_address = address
@@ -408,7 +422,9 @@ class DexScraper:
 
         if protocol_candidates:
             protocol_candidates.sort(key=lambda item: item[0])
-            profile.protocol = protocol_candidates[0][1]
+            nearest_protocol_distance, nearest_protocol = protocol_candidates[0]
+            if nearest_protocol_distance <= 220:
+                profile.protocol = nearest_protocol
 
         age_candidates = []
         for age_info in metadata.get("age_indicators", []):
@@ -423,7 +439,9 @@ class DexScraper:
 
         if age_candidates:
             age_candidates.sort(key=lambda item: item[0])
-            profile.age = age_candidates[0][1]
+            nearest_age_distance, nearest_age = age_candidates[0]
+            if nearest_age_distance <= 180:
+                profile.age = nearest_age
 
     def _extract_real_token_names(
         self, printable: str, data_start: int
@@ -820,10 +838,19 @@ class DexScraper:
 
         # Extract Solana addresses
         addresses = self.address_pattern.findall(printable_text)
+        seen_entries: set[tuple[str, int]] = set()
         for addr in addresses:
-            if len(addr) >= 32:  # Valid Solana address length
-                pos = printable_text.find(addr)
-                if pos >= 0:
+            if not self._is_probable_solana_address(addr):
+                continue
+
+            start = 0
+            while True:
+                pos = printable_text.find(addr, start)
+                if pos < 0:
+                    break
+                key = (addr, pos)
+                if key not in seen_entries:
+                    seen_entries.add(key)
                     metadata["addresses"].append(
                         {
                             "address": addr,
@@ -831,6 +858,7 @@ class DexScraper:
                             "type": self._classify_address(addr),
                         }
                     )
+                start = pos + 1
 
         # Extract URLs
         urls = self.url_pattern.findall(printable_text)
@@ -887,6 +915,29 @@ class DexScraper:
             return "potential_contract"
         else:
             return "unknown"
+
+    def _is_probable_solana_address(self, address: str) -> bool:
+        """Validate Solana base58 address by decoding into 32 bytes."""
+        if len(address) < 32 or len(address) > 44:
+            return False
+        if any(char not in _BASE58_ALPHABET_SET for char in address):
+            return False
+
+        decoded_value = 0
+        for char in address:
+            decoded_value = (decoded_value * 58) + _BASE58_ALPHABET.index(char)
+
+        decoded = (
+            b""
+            if decoded_value == 0
+            else decoded_value.to_bytes(
+                (decoded_value.bit_length() + 7) // 8, byteorder="big"
+            )
+        )
+
+        leading_zeros = len(address) - len(address.lstrip("1"))
+        decoded = (b"\x00" * leading_zeros) + decoded
+        return len(decoded) == 32
 
     def _classify_url(self, url: str) -> str:
         """Classify URL type."""

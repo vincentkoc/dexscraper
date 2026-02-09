@@ -259,6 +259,49 @@ class TestDexScraper:
         assert profile.telegram == "https://t.me/test"
         assert profile.website == "https://example.com"
 
+    def test_enrich_token_profile_deduplicates_addresses_and_gates_distance(self):
+        """Address roles should not duplicate and far metadata should be ignored."""
+        scraper = DexScraper()
+        profile = TokenProfile(symbol="TEST", price=0.001)
+
+        metadata = {
+            "addresses": [
+                {
+                    "address": "DjDzLNonA1XcWpzTBZhNZUqHCvq6SeLfT3otPYdVSMH",
+                    "position": 1000,
+                    "type": "unknown",
+                },
+                {
+                    "address": "DjDzLNonA1XcWpzTBZhNZUqHCvq6SeLfT3otPYdVSMH",
+                    "position": 1001,
+                    "type": "unknown",
+                },
+            ],
+            "urls": [],
+            "protocols": [{"protocol": "pumpfun", "position": 1600}],
+            "tokens": [],
+            "age_indicators": [{"age": "24h", "position": 1600}],
+        }
+
+        scraper._enrich_token_profile(profile, "TEST", 1000, metadata)
+
+        assert profile.token_address == "DjDzLNonA1XcWpzTBZhNZUqHCvq6SeLfT3otPYdVSMH"
+        assert profile.pair_address is None
+        assert profile.creator_address is None
+        assert profile.protocol == "unknown"
+        assert profile.age is None
+
+    def test_is_probable_solana_address_validation(self):
+        """Address validation should keep real addresses and reject malformed values."""
+        scraper = DexScraper()
+
+        assert scraper._is_probable_solana_address(
+            "So11111111111111111111111111111111111111112"
+        )
+        assert not scraper._is_probable_solana_address(
+            "VSo11111111111111111111111111111111111111112"
+        )
+
     @pytest.mark.asyncio
     async def test_extract_all_tokens_enriches_profiles(self):
         """Token records extracted from binary data should be metadata-enriched."""
