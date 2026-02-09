@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from io import StringIO
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 
 @dataclass
@@ -303,6 +303,45 @@ class TokenProfile:
     def to_json(self) -> str:
         """Convert to JSON string."""
         return json.dumps(self.to_dict(), default=str)
+
+    def to_output_dict(self) -> dict[str, Any]:
+        """Convert to JSON output dictionary without nulls for user-facing payloads."""
+        data = self.to_dict()
+
+        string_defaults = {
+            "symbol": self.symbol or "",
+            "token_name": self.token_name or self.symbol or "",
+            "chain": self.chain or "solana",
+            "protocol": self.protocol or "unknown",
+            "age": self.age or "",
+            "pair_address": self.pair_address or "unknown",
+            "creator_address": self.creator_address or "unknown",
+            "token_address": self.token_address or "unknown",
+            "quote_address": self.quote_address or "unknown",
+            "website": self.website or "",
+            "twitter": self.twitter or "",
+            "telegram": self.telegram or "",
+        }
+        for key, value in string_defaults.items():
+            data[key] = value
+
+        numeric_defaults: dict[str, Union[int, float]] = {
+            "price": self.price or 0.0,
+            "volume_24h": self.volume_24h or 0.0,
+            "txns_24h": self.txns_24h or 0,
+            "makers": self.makers or 0,
+            "liquidity": self.liquidity or 0.0,
+            "market_cap": self.market_cap or 0.0,
+            "boost": self.boost or 0,
+            "change_5m": self.change_5m or 0.0,
+            "change_1h": self.change_1h or 0.0,
+            "change_6h": self.change_6h or 0.0,
+            "change_24h": self.change_24h or 0.0,
+        }
+        for key, value in numeric_defaults.items():
+            data[key] = value
+
+        return data
 
     def is_complete(self, min_fields: int = 5) -> bool:
         """Check if profile has minimum required fields."""

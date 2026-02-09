@@ -615,7 +615,9 @@ def create_token_callback(
                 "extraction_timestamp": batch.extraction_timestamp,
                 "total_extracted": batch.total_extracted,
                 "high_confidence_count": batch.high_confidence_count,
-                "tokens": [token.to_dict() for token in batch.get_top_tokens(limit)],
+                "tokens": [
+                    token.to_output_dict() for token in batch.get_top_tokens(limit)
+                ],
             }
             print(json.dumps(output, separators=(",", ":"), default=str))
         elif format_type == "ohlcv":
@@ -657,7 +659,7 @@ def build_batch_output(
             "extraction_timestamp": batch.extraction_timestamp,
             "total_extracted": batch.total_extracted,
             "high_confidence_count": batch.high_confidence_count,
-            "tokens": [token.to_dict() for token in tokens],
+            "tokens": [token.to_output_dict() for token in tokens],
         }
         return json.dumps(payload, separators=(",", ":"), default=str)
 

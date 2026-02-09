@@ -131,6 +131,21 @@ class TestTokenProfile:
         empty_token = TokenProfile(record_position=5)
         assert empty_token.get_display_name() == "Token_5"
 
+    def test_to_output_dict_normalizes_none_values(self):
+        """User-facing output dict should avoid nulls."""
+        token = TokenProfile(symbol="TEST")
+
+        output = token.to_output_dict()
+
+        assert output["symbol"] == "TEST"
+        assert output["token_name"] == "TEST"
+        assert output["chain"] == "solana"
+        assert output["protocol"] == "unknown"
+        assert output["pair_address"] == "unknown"
+        assert output["price"] == 0.0
+        assert output["txns_24h"] == 0
+        assert output["change_24h"] == 0.0
+
 
 class TestExtractedTokenBatch:
     """Test batch operations and exports."""

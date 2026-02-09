@@ -310,6 +310,7 @@ class DexScraper:
         # Extract token names using proven patterns (from deep analyzer)
         token_names = self._extract_real_token_names(printable, data_start)
         logger.debug(f"Found {len(token_names)} potential token symbols")
+        metadata = self._extract_metadata_patterns(data, data_start)
 
         # Extract complete token records around each symbol
         tokens = []
@@ -327,10 +328,102 @@ class DexScraper:
                 token_name, record_data, pos
             )
             if token_record:
+                self._enrich_token_profile(token_record, token_name, pos, metadata)
                 tokens.append(token_record)
 
         logger.info(f"Extracted {len(tokens)} tokens using proven deep analysis method")
         return tokens
+
+    def _enrich_token_profile(
+        self,
+        profile: TokenProfile,
+        token_name: str,
+        token_position: int,
+        metadata: dict[str, list[dict[str, Any]]],
+    ) -> None:
+        """Populate metadata fields for a token extracted from numeric records."""
+        profile.token_name = profile.token_name or token_name
+        profile.chain = profile.chain or self.protocol_patterns["chain"][0]
+        profile.protocol = profile.protocol or "unknown"
+
+        max_distance = 1000
+
+        nearby_addresses = sorted(
+            [
+                address
+                for address in metadata.get("addresses", [])
+                if isinstance(address.get("position"), int)
+                and abs(int(address["position"]) - token_position) <= max_distance
+            ],
+            key=lambda entry: abs(int(entry["position"]) - token_position),
+        )
+
+        for address_info in nearby_addresses:
+            address = address_info.get("address")
+            if not isinstance(address, str):
+                continue
+
+            address_type = str(address_info.get("type", ""))
+            if address_type == "SOL_token":
+                profile.quote_address = profile.quote_address or address
+            elif not profile.token_address:
+                profile.token_address = address
+            elif not profile.pair_address:
+                profile.pair_address = address
+            elif not profile.creator_address:
+                profile.creator_address = address
+
+        nearby_urls = sorted(
+            [
+                url
+                for url in metadata.get("urls", [])
+                if isinstance(url.get("position"), int)
+                and abs(int(url["position"]) - token_position) <= max_distance
+            ],
+            key=lambda entry: abs(int(entry["position"]) - token_position),
+        )
+
+        for url_info in nearby_urls:
+            url = url_info.get("url")
+            if not isinstance(url, str):
+                continue
+            url_type = str(url_info.get("type", ""))
+            if url_type == "twitter" and not profile.twitter:
+                profile.twitter = url
+            elif url_type == "telegram" and not profile.telegram:
+                profile.telegram = url
+            elif url_type == "website" and not profile.website:
+                profile.website = url
+
+        protocol_candidates = []
+        for protocol_info in metadata.get("protocols", []):
+            protocol = protocol_info.get("protocol")
+            position = protocol_info.get("position")
+            if (
+                isinstance(protocol, str)
+                and isinstance(position, int)
+                and abs(position - token_position) <= max_distance
+            ):
+                protocol_candidates.append((abs(position - token_position), protocol))
+
+        if protocol_candidates:
+            protocol_candidates.sort(key=lambda item: item[0])
+            profile.protocol = protocol_candidates[0][1]
+
+        age_candidates = []
+        for age_info in metadata.get("age_indicators", []):
+            age = age_info.get("age")
+            position = age_info.get("position")
+            if (
+                isinstance(age, str)
+                and isinstance(position, int)
+                and abs(position - token_position) <= max_distance
+            ):
+                age_candidates.append((abs(position - token_position), age))
+
+        if age_candidates:
+            age_candidates.sort(key=lambda item: item[0])
+            profile.age = age_candidates[0][1]
 
     def _extract_real_token_names(
         self, printable: str, data_start: int
@@ -754,21 +847,31 @@ class DexScraper:
 
         # Extract protocol indicators
         for protocol in self.protocol_patterns["protocols"]:
-            positions = []
             start = 0
             while True:
                 pos = printable_text.lower().find(protocol.lower(), start)
                 if pos == -1:
                     break
-                positions.append(data_start + pos)
+                metadata["protocols"].append(
+                    {"protocol": protocol, "position": data_start + pos}
+                )
                 start = pos + 1
-                if len(positions) >= 10:
+                if len(metadata["protocols"]) >= 100:
                     break
 
-            if positions:
-                metadata["protocols"].append(
-                    {"protocol": protocol, "positions": positions}
+        # Extract age indicators (e.g. 5m, 1h, 6h, 24h)
+        for indicator in self.protocol_patterns["age_indicators"]:
+            start = 0
+            while True:
+                pos = printable_text.lower().find(indicator.lower(), start)
+                if pos == -1:
+                    break
+                metadata["age_indicators"].append(
+                    {"age": indicator, "position": data_start + pos}
                 )
+                start = pos + 1
+                if len(metadata["age_indicators"]) >= 100:
+                    break
 
         # Extract token symbols and names
         token_symbols = self._extract_token_symbols(printable_text, data_start)
@@ -1372,7 +1475,9 @@ class DexScraper:
                 "type": "enhanced_tokens",
                 "total_extracted": batch.total_extracted,
                 "high_confidence_count": batch.high_confidence_count,
-                "tokens": [token.to_dict() for token in batch.get_top_tokens(10)],
+                "tokens": [
+                    token.to_output_dict() for token in batch.get_top_tokens(10)
+                ],
                 "timestamp": batch.extraction_timestamp,
             }
             print(json.dumps(output, separators=(",", ":"), default=str))

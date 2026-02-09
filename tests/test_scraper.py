@@ -213,6 +213,93 @@ class TestDexScraper:
         assert profile.record_position == 0
         assert profile.record_span == 100
 
+    def test_enrich_token_profile_populates_metadata_fields(self):
+        """Enhanced extraction should populate metadata fields from nearby entries."""
+        scraper = DexScraper()
+        profile = TokenProfile(symbol="TEST", price=0.001)
+
+        metadata = {
+            "addresses": [
+                {
+                    "address": "So11111111111111111111111111111111111111112",
+                    "position": 1000,
+                    "type": "SOL_token",
+                },
+                {
+                    "address": "DjDzLNonA1XcWpzTBZhNZUqHCvq6SeLfT3otPYdVSMH",
+                    "position": 1010,
+                    "type": "unknown",
+                },
+                {
+                    "address": "2BvQnXcQ1D4D2zu8e3gt6uDdrP8xPq2v5sH4xS9hT8aA",
+                    "position": 1020,
+                    "type": "unknown",
+                },
+            ],
+            "urls": [
+                {"url": "https://x.com/test", "position": 990, "type": "twitter"},
+                {"url": "https://t.me/test", "position": 995, "type": "telegram"},
+                {"url": "https://example.com", "position": 1005, "type": "website"},
+            ],
+            "protocols": [{"protocol": "pumpfun", "position": 1015}],
+            "tokens": [],
+            "age_indicators": [{"age": "24h", "position": 1025}],
+        }
+
+        scraper._enrich_token_profile(profile, "TEST", 1000, metadata)
+
+        assert profile.token_name == "TEST"
+        assert profile.chain == "solana"
+        assert profile.protocol == "pumpfun"
+        assert profile.age == "24h"
+        assert profile.quote_address == "So11111111111111111111111111111111111111112"
+        assert profile.token_address == "DjDzLNonA1XcWpzTBZhNZUqHCvq6SeLfT3otPYdVSMH"
+        assert profile.pair_address == "2BvQnXcQ1D4D2zu8e3gt6uDdrP8xPq2v5sH4xS9hT8aA"
+        assert profile.twitter == "https://x.com/test"
+        assert profile.telegram == "https://t.me/test"
+        assert profile.website == "https://example.com"
+
+    @pytest.mark.asyncio
+    async def test_extract_all_tokens_enriches_profiles(self):
+        """Token records extracted from binary data should be metadata-enriched."""
+        scraper = DexScraper()
+        token_profile = TokenProfile(symbol="TEST", price=0.001, field_count=6)
+
+        with (
+            patch.object(scraper, "_extract_real_token_names", return_value={100: "TEST"}),
+            patch.object(
+                scraper,
+                "_extract_validated_token_record",
+                return_value=token_profile,
+            ),
+            patch.object(
+                scraper,
+                "_extract_metadata_patterns",
+                return_value={
+                    "addresses": [
+                        {
+                            "address": "DjDzLNonA1XcWpzTBZhNZUqHCvq6SeLfT3otPYdVSMH",
+                            "position": 105,
+                            "type": "unknown",
+                        }
+                    ],
+                    "urls": [],
+                    "protocols": [{"protocol": "pumpswap", "position": 102}],
+                    "tokens": [],
+                    "age_indicators": [{"age": "6h", "position": 103}],
+                },
+            ),
+        ):
+            tokens = await scraper._extract_all_tokens(b"A" * 2048, 0)
+
+        assert len(tokens) == 1
+        enriched = tokens[0]
+        assert enriched.token_name == "TEST"
+        assert enriched.chain == "solana"
+        assert enriched.protocol == "pumpswap"
+        assert enriched.age == "6h"
+        assert enriched.token_address == "DjDzLNonA1XcWpzTBZhNZUqHCvq6SeLfT3otPYdVSMH"
+
     @pytest.mark.asyncio
     async def test_websocket_error_handling(self):
         """Test WebSocket connection error handling."""
