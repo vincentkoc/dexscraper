@@ -6,7 +6,9 @@ import re
 import struct
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Awaitable, List, Optional, TypeVar
+
+T = TypeVar("T")
 
 
 def extract_floats_from_bytes(
@@ -406,7 +408,7 @@ def normalize_symbol(symbol: str) -> str:
     return normalized or "UNK"
 
 
-async def with_timeout(coro, timeout_seconds: float):
+async def with_timeout(coro: Awaitable[T], timeout_seconds: float) -> T:
     """Execute coroutine with timeout.
 
     Args:
@@ -436,7 +438,7 @@ def exponential_backoff(
         Delay in seconds
     """
     delay = base_delay * (2 ** min(attempt, 10))  # Cap at 2^10
-    return min(delay, max_delay)
+    return float(min(delay, max_delay))
 
 
 def validate_trading_data(price: Optional[float], volume: Optional[float]) -> bool:
@@ -474,7 +476,7 @@ class DataBuffer:
         self.buffer: List[Any] = []
         self.index = 0
 
-    def append(self, item: Any):
+    def append(self, item: Any) -> None:
         """Add item to buffer."""
         if len(self.buffer) < self.max_size:
             self.buffer.append(item)
@@ -497,7 +499,7 @@ class DataBuffer:
                 recent = self.buffer[-remaining:] + recent
             return recent
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear buffer."""
         self.buffer.clear()
         self.index = 0

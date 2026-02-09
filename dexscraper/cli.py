@@ -5,7 +5,7 @@ import asyncio
 import sys
 import time
 from datetime import datetime
-from typing import List, TYPE_CHECKING
+from typing import List
 
 # Rich types will be imported in the try block below
 
@@ -410,26 +410,26 @@ class SlickCLI:
         left_stats = Text()
         left_stats.append("📊 ", style="bright_blue")
         left_stats.append("EXTRACTION\n", style="bold bright_white")
-        left_stats.append(f"Total: ", style="bright_white")
+        left_stats.append("Total: ", style="bright_white")
         left_stats.append(f"{batch.total_extracted}", style="bold bright_green")
         left_stats.append("\n")
-        left_stats.append(f"High Conf: ", style="bright_white")
+        left_stats.append("High Conf: ", style="bright_white")
         left_stats.append(f"{batch.high_confidence_count}", style="bold gold1")
         left_stats.append("\n")
-        left_stats.append(f"Complete: ", style="bright_white")
+        left_stats.append("Complete: ", style="bright_white")
         left_stats.append(f"{batch.complete_profiles_count}", style="bold bright_blue")
 
         # Center column - Session Stats
         center_stats = Text()
         center_stats.append("⚡ ", style="gold1")
         center_stats.append("SESSION\n", style="bold bright_white")
-        center_stats.append(f"Cycle: ", style="bright_white")
+        center_stats.append("Cycle: ", style="bright_white")
         center_stats.append(f"#{self.extraction_count}", style="bold bright_cyan")
         center_stats.append("\n")
-        center_stats.append(f"Rate: ", style="bright_white")
+        center_stats.append("Rate: ", style="bright_white")
         center_stats.append(f"{extraction_rate:.1f}/min", style="bold bright_yellow")
         center_stats.append("\n")
-        center_stats.append(f"Uptime: ", style="bright_white")
+        center_stats.append("Uptime: ", style="bright_white")
         center_stats.append(f"{session_duration:.0f}s", style="bold bright_magenta")
 
         # Right column - Market Stats
@@ -444,7 +444,7 @@ class SlickCLI:
         else:
             vol_str = f"${total_vol/1_000:.0f}K"
 
-        right_stats.append(f"Volume: ", style="bright_white")
+        right_stats.append("Volume: ", style="bright_white")
         right_stats.append(f"{vol_str}", style="bold bright_green")
         right_stats.append("\n")
 
@@ -452,13 +452,13 @@ class SlickCLI:
         avg_conf = sum(t.confidence_score for t in batch.tokens) / max(
             len(batch.tokens), 1
         )
-        right_stats.append(f"Avg Conf: ", style="bright_white")
+        right_stats.append("Avg Conf: ", style="bright_white")
         right_stats.append(f"{avg_conf:.0%}", style="bold gold1")
         right_stats.append("\n")
 
         # Current time
         current_time = datetime.now().strftime("%H:%M:%S")
-        right_stats.append(f"Time: ", style="bright_white")
+        right_stats.append("Time: ", style="bright_white")
         right_stats.append(f"{current_time}", style="bold bright_blue")
 
         # Combine columns
@@ -523,7 +523,6 @@ class SlickCLI:
 
     def show_startup_animation(self):
         """Show startup animation."""
-        from rich.spinner import Spinner
 
         startup_text = Text()
         startup_text.append("🚀 ", style="bright_blue")

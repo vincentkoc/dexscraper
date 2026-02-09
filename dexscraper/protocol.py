@@ -3,7 +3,7 @@
 import logging
 import struct
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .models import LiquidityData, PriceData, TradingPair, VolumeData
 
@@ -16,7 +16,7 @@ def handle_double(value: float) -> float:
         if not isinstance(value, float) or value != value or abs(value) == float("inf"):
             return 0.0
         return value
-    except:
+    except Exception:
         return 0.0
 
 
@@ -35,7 +35,7 @@ def clean_string(s: str) -> str:
             return cleaned.split("@")[0].split("\\")[0]
 
         return cleaned.strip()
-    except:
+    except Exception:
         return ""
 
 
@@ -127,7 +127,7 @@ def decode_pair(data: bytes) -> Optional[TradingPair]:
                     )
                     if value and len(value) >= 2:  # Only accept reasonable values
                         pair_data[field] = value
-                except:  # nosec B110
+                except Exception:  # nosec B110
                     pass
             pos += str_len
 
@@ -166,7 +166,7 @@ def decode_pair(data: bytes) -> Optional[TradingPair]:
                 created_at_formatted = datetime.fromtimestamp(created_at).strftime(
                     "%Y-%m-%d %H:%M:%S"
                 )
-            except:
+            except Exception:
                 created_at_formatted = "1970-01-01 00:00:00"
 
         # Create TradingPair object

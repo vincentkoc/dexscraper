@@ -109,7 +109,7 @@ class TradingPair:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format matching original output."""
-        result = {
+        result: Dict[str, Any] = {
             "chain": self.chain,
             "protocol": self.protocol,
             "pairAddress": self.pair_address,
@@ -209,7 +209,7 @@ class TokenProfile:
     record_span: Optional[int] = None
     timestamp: Optional[int] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Set timestamp if not provided."""
         if self.timestamp is None:
             self.timestamp = int(time.time())
@@ -327,7 +327,7 @@ class ExtractedTokenBatch:
     high_confidence_count: int = 0
     complete_profiles_count: int = 0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Calculate batch statistics."""
         self.total_extracted = len(self.tokens)
         self.high_confidence_count = len(
@@ -676,26 +676,26 @@ class PrometheusExporter:
         timestamp_ms = batch.extraction_timestamp * 1000
 
         # Batch-level metrics
-        lines.append(f"# HELP dex_tokens_extracted_total Total tokens extracted")
-        lines.append(f"# TYPE dex_tokens_extracted_total counter")
+        lines.append("# HELP dex_tokens_extracted_total Total tokens extracted")
+        lines.append("# TYPE dex_tokens_extracted_total counter")
         lines.append(
             f"dex_tokens_extracted_total {batch.total_extracted} {timestamp_ms}"
         )
 
         lines.append(
-            f"# HELP dex_tokens_high_confidence High confidence tokens extracted"
+            "# HELP dex_tokens_high_confidence High confidence tokens extracted"
         )
-        lines.append(f"# TYPE dex_tokens_high_confidence gauge")
+        lines.append("# TYPE dex_tokens_high_confidence gauge")
         lines.append(
             f"dex_tokens_high_confidence {batch.high_confidence_count} {timestamp_ms}"
         )
 
         # Token-level metrics
-        lines.append(f"# HELP dex_token_price Token price in USD")
-        lines.append(f"# TYPE dex_token_price gauge")
+        lines.append("# HELP dex_token_price Token price in USD")
+        lines.append("# TYPE dex_token_price gauge")
 
-        lines.append(f"# HELP dex_token_volume_24h Token 24h volume in USD")
-        lines.append(f"# TYPE dex_token_volume_24h gauge")
+        lines.append("# HELP dex_token_volume_24h Token 24h volume in USD")
+        lines.append("# TYPE dex_token_volume_24h gauge")
 
         for token in batch.get_top_tokens(10):
             symbol = token.symbol or f"token_{batch.tokens.index(token)}"

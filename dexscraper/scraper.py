@@ -10,14 +10,17 @@ import re
 import ssl
 import struct
 import time
-from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import websockets
+try:
+    from websockets.asyncio.client import ClientConnection as WebSocketConnection
+except Exception:  # pragma: no cover - fallback for older websockets layouts
+    WebSocketConnection = Any
 
 from .cloudflare_bypass import CloudflareBypass
-from .config import Chain, PresetConfigs, RankBy, ScrapingConfig, Timeframe
-from .models import ExtractedTokenBatch, OHLCData, TokenProfile, TradingPair
+from .config import PresetConfigs, ScrapingConfig
+from .models import ExtractedTokenBatch, TokenProfile, TradingPair
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +165,7 @@ class DexScraper:
 
         return value
 
-    async def _connect(self) -> Optional[websockets.WebSocketServerProtocol]:
+    async def _connect(self) -> Optional[WebSocketConnection]:
         """Establish WebSocket connection with retry logic."""
         uri = self.config.build_websocket_url()
         logger.debug(f"Connecting to: {uri}")
@@ -275,6 +278,22 @@ class DexScraper:
             return ExtractedTokenBatch()
         finally:
             await websocket.close()
+
+    def extract_token_data_sync(self) -> ExtractedTokenBatch:
+        """Synchronously extract a single token batch.
+
+        Raises:
+            RuntimeError: If called while an event loop is already running.
+        """
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.extract_token_data())
+
+        raise RuntimeError(
+            "extract_token_data_sync() cannot run inside an active event loop. "
+            "Use 'await extract_token_data()' instead."
+        )
 
     async def _extract_all_tokens(
         self, data: bytes, data_start: int
@@ -475,7 +494,7 @@ class DexScraper:
                         fields["txns_24h"] = int(val)
                     elif "makers" not in fields:
                         fields["makers"] = int(val)
-            except:  # nosec B112
+            except Exception:  # nosec B112
                 continue
 
         # Also try float extraction (as deep analyzer does)
@@ -498,7 +517,7 @@ class DexScraper:
                         fields["txns_24h"] = int(val)
                     elif "makers" not in fields:
                         fields["makers"] = int(val)
-            except:  # nosec B112
+            except Exception:  # nosec B112
                 continue
 
         # CRITICAL: Also extract uint32 integers for transaction counts (as deep analyzer finds)
@@ -512,7 +531,7 @@ class DexScraper:
                 # Maker counts: 10 to 1000 range
                 elif 10 <= val <= 1000 and "makers" not in fields:
                     fields["makers"] = val
-            except:  # nosec B112
+            except Exception:  # nosec B112
                 continue
 
         # Return token with at least 3 fields (as deep analyzer does)
@@ -579,7 +598,7 @@ class DexScraper:
                 val = struct.unpack("<d", window[i : i + 8])[0]
                 if self._is_valid_numeric_value(val):
                     values.append((base_offset + i, val, "double"))
-            except:  # nosec B112
+            except Exception:  # nosec B112
                 continue
 
         # Extract floats (4-byte IEEE 754)
@@ -592,7 +611,7 @@ class DexScraper:
                 val = struct.unpack("<f", window[i : i + 4])[0]
                 if self._is_valid_numeric_value(val):
                     values.append((base_offset + i, val, "float"))
-            except:  # nosec B112
+            except Exception:  # nosec B112
                 continue
 
         # Extract 32-bit integers (counts)
@@ -609,7 +628,7 @@ class DexScraper:
                     <= self.value_ranges["makers"][1]
                 ):
                     values.append((base_offset + i, float(val), "uint32"))
-            except:  # nosec B112
+            except Exception:  # nosec B112
                 continue
 
         # Sort by position and remove overlaps

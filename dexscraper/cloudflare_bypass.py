@@ -16,20 +16,20 @@ class CloudflareBypass:
     def __init__(self, debug: bool = False):
         self.debug = debug
         self.scraper = self._create_scraper()
-        self._session_cookies = {}
-        self._last_session_update = 0
+        self._session_cookies: Dict[str, str] = {}
+        self._last_session_update: float = 0.0
         self._session_ttl = 300  # 5 minutes
 
-    def _create_scraper(self):
+    def _create_scraper(self) -> Any:
         """Create a new cloudscraper session."""
         return cloudscraper.create_scraper(
             browser={"browser": "chrome", "platform": "windows", "mobile": False}
         )
 
-    def _refresh_session(self):
+    def _refresh_session(self) -> None:
         """Reset cookies and rotate to a fresh scraper session."""
         self._session_cookies = {}
-        self._last_session_update = 0
+        self._last_session_update = 0.0
         try:
             self.scraper.cookies.clear()
         except Exception:
@@ -37,12 +37,12 @@ class CloudflareBypass:
             pass
         self.scraper = self._create_scraper()
 
-    async def _fetch_main_site(self, main_site_url: str):
+    async def _fetch_main_site(self, main_site_url: str) -> Optional[Any]:
         """Run the blocking cloudscraper request in an executor."""
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._make_request, main_site_url)
 
-    def _store_session_cookies(self):
+    def _store_session_cookies(self) -> Dict[str, str]:
         """Persist latest cookies from scraper state."""
         self._session_cookies = dict(self.scraper.cookies)
         self._last_session_update = time.time()
@@ -95,7 +95,7 @@ class CloudflareBypass:
 
         return {}
 
-    def _make_request(self, url: str):
+    def _make_request(self, url: str) -> Optional[Any]:
         """Make synchronous request using cloudscraper."""
         try:
             response = self.scraper.get(url, timeout=30)
