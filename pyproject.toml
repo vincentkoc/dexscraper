@@ -141,7 +141,6 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = [
     "dexscraper.cli",
-    "dexscraper.enhanced_protocol",
     "dexscraper.scraper",
 ]
 ignore_errors = true

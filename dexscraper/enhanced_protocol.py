@@ -2,17 +2,21 @@
 
 import logging
 import struct
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from .models import LiquidityData, PriceData, TradingPair, VolumeData
 
 logger = logging.getLogger(__name__)
 
+NumericSeries = List[Tuple[int, float]]
+NumericClusterData = Dict[str, NumericSeries]
+NumericCluster = Tuple[int, NumericClusterData]
+
 
 class EnhancedProtocolParser:
     """Enhanced parser that extracts real numeric data from binary protocol."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.debug_mode = False
 
     def parse_message(self, data: bytes) -> List[TradingPair]:
@@ -71,7 +75,7 @@ class EnhancedProtocolParser:
 
         return pairs[:50]  # Limit to 50 pairs to avoid overwhelming output
 
-    def _find_numeric_clusters(self, data: bytes) -> List[tuple]:
+    def _find_numeric_clusters(self, data: bytes) -> List[NumericCluster]:
         """Find clusters of numeric data that likely represent trading pairs."""
         clusters = []
 
@@ -97,9 +101,9 @@ class EnhancedProtocolParser:
         logger.debug(f"Found {len(unique_clusters)} numeric clusters")
         return unique_clusters
 
-    def _extract_numeric_from_window(self, window: bytes) -> Dict[str, List]:
+    def _extract_numeric_from_window(self, window: bytes) -> NumericClusterData:
         """Extract different types of numeric data from a window."""
-        data = {
+        data: NumericClusterData = {
             "prices": [],  # Small decimals (0.0001-0.001)
             "volumes": [],  # Medium numbers (1K-10M)
             "counts": [],  # Small integers (10-50K)
@@ -151,20 +155,22 @@ class EnhancedProtocolParser:
 
         return data
 
-    def _deduplicate_clusters(self, clusters: List[tuple]) -> List[tuple]:
+    def _deduplicate_clusters(
+        self, clusters: List[NumericCluster]
+    ) -> List[NumericCluster]:
         """Remove overlapping clusters, keeping the best ones."""
         if not clusters:
             return []
 
         # Sort by data richness (total number of values)
-        def cluster_score(cluster):
-            _, data = cluster
-            return sum(len(values) for values in data.values())
+        def cluster_score(cluster: NumericCluster) -> int:
+            _, cluster_data = cluster
+            return sum(len(values) for values in cluster_data.values())
 
         clusters.sort(key=cluster_score, reverse=True)
 
-        unique = []
-        used_ranges = []
+        unique: List[NumericCluster] = []
+        used_ranges: List[Tuple[int, int]] = []
 
         for offset, data in clusters:
             # Check if this overlaps significantly with existing clusters
@@ -231,21 +237,13 @@ class EnhancedProtocolParser:
             volume_data = None
             if cluster_data["volumes"]:
                 volume = cluster_data["volumes"][0][1]
-                volume_data = VolumeData(
-                    h1=volume * 0.04,  # Estimate 1h as ~4% of 24h
-                    h6=volume * 0.25,  # Estimate 6h as ~25% of 24h
-                    h24=volume,
-                )
+                volume_data = VolumeData(h24=volume)
 
             # Build liquidity data
             liquidity_data = None
             if cluster_data["liquidity"]:
                 liquidity = cluster_data["liquidity"][0][1]
-                liquidity_data = LiquidityData(
-                    usd=liquidity,
-                    base=liquidity * 0.5,  # Rough estimate
-                    quote=liquidity * 0.5,
-                )
+                liquidity_data = LiquidityData(usd=liquidity)
 
             # Create timestamp (current time)
             import time
