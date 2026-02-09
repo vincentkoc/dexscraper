@@ -3,7 +3,8 @@
 import logging
 import sys
 from datetime import datetime
-from typing import Optional
+from types import TracebackType
+from typing import Any, Callable, Optional
 
 
 class DexScraperLogger:
@@ -17,12 +18,13 @@ class DexScraperLogger:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
+        self.logger: logging.Logger = logging.getLogger("dexscraper")
         if not self._initialized:
             self._setup_default_logger()
             self._initialized = True
 
-    def _setup_default_logger(self):
+    def _setup_default_logger(self) -> None:
         """Setup default logging configuration."""
         self.logger = logging.getLogger("dexscraper")
 
@@ -46,7 +48,7 @@ class DexScraperLogger:
         # Add handler to logger
         self.logger.addHandler(console_handler)
 
-    def set_debug(self, debug: bool = True):
+    def set_debug(self, debug: bool = True) -> None:
         """Enable or disable debug logging."""
         if debug:
             self.logger.setLevel(logging.DEBUG)
@@ -60,13 +62,13 @@ class DexScraperLogger:
                 if isinstance(handler, logging.StreamHandler):
                     handler.setLevel(logging.ERROR)
 
-    def set_level(self, level: int):
+    def set_level(self, level: int) -> None:
         """Set logging level."""
         self.logger.setLevel(level)
         for handler in self.logger.handlers:
             handler.setLevel(level)
 
-    def add_file_handler(self, filename: str, level: int = logging.INFO):
+    def add_file_handler(self, filename: str, level: int = logging.INFO) -> None:
         """Add file logging handler."""
         file_handler = logging.FileHandler(filename)
         file_handler.setLevel(level)
@@ -93,7 +95,7 @@ def get_logger() -> logging.Logger:
     return DexScraperLogger().get_logger()
 
 
-def set_debug_logging(debug: bool = True):
+def set_debug_logging(debug: bool = True) -> None:
     """Enable or disable debug logging globally.
 
     Args:
@@ -102,7 +104,7 @@ def set_debug_logging(debug: bool = True):
     DexScraperLogger().set_debug(debug)
 
 
-def add_file_logging(filename: str, level: int = logging.INFO):
+def add_file_logging(filename: str, level: int = logging.INFO) -> None:
     """Add file logging to the global logger.
 
     Args:
@@ -115,17 +117,22 @@ def add_file_logging(filename: str, level: int = logging.INFO):
 class LogContext:
     """Context manager for temporary logging level changes."""
 
-    def __init__(self, level: int):
+    def __init__(self, level: int) -> None:
         self.level = level
-        self.original_level = None
+        self.original_level: Optional[int] = None
         self.logger_instance = DexScraperLogger()
 
-    def __enter__(self):
+    def __enter__(self) -> "LogContext":
         self.original_level = self.logger_instance.logger.level
         self.logger_instance.set_level(self.level)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         if self.original_level is not None:
             self.logger_instance.set_level(self.original_level)
 
@@ -133,17 +140,22 @@ class LogContext:
 class PerformanceLogger:
     """Performance logging utilities."""
 
-    def __init__(self, operation_name: str):
+    def __init__(self, operation_name: str) -> None:
         self.operation_name = operation_name
         self.logger = get_logger()
-        self.start_time = None
+        self.start_time: Optional[datetime] = None
 
-    def __enter__(self):
+    def __enter__(self) -> "PerformanceLogger":
         self.start_time = datetime.now()
         self.logger.debug(f"Starting {self.operation_name}")
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         if self.start_time:
             duration = datetime.now() - self.start_time
             duration_ms = duration.total_seconds() * 1000
@@ -158,15 +170,17 @@ class PerformanceLogger:
                 )
 
 
-def log_performance(operation_name: str):
+def log_performance(
+    operation_name: str,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator for logging function performance.
 
     Args:
         operation_name: Name of the operation being logged
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             with PerformanceLogger(operation_name):
                 return func(*args, **kwargs)
 
@@ -176,13 +190,15 @@ def log_performance(operation_name: str):
 
 
 # Common log patterns
-def log_extraction_start(token_count: int = 0):
+def log_extraction_start(token_count: int = 0) -> None:
     """Log the start of token extraction."""
     logger = get_logger()
     logger.info(f"Starting token extraction (target: {token_count} tokens)")
 
 
-def log_extraction_success(batch_size: int, high_confidence: int, duration_ms: float):
+def log_extraction_success(
+    batch_size: int, high_confidence: int, duration_ms: float
+) -> None:
     """Log successful token extraction."""
     logger = get_logger()
     logger.info(
@@ -190,37 +206,37 @@ def log_extraction_success(batch_size: int, high_confidence: int, duration_ms: f
     )
 
 
-def log_extraction_failure(error: Exception, duration_ms: float):
+def log_extraction_failure(error: Exception, duration_ms: float) -> None:
     """Log failed token extraction."""
     logger = get_logger()
     logger.error(f"Extraction failed after {duration_ms:.2f}ms: {error}")
 
 
-def log_websocket_connection(url: str):
+def log_websocket_connection(url: str) -> None:
     """Log WebSocket connection attempt."""
     logger = get_logger()
     logger.debug(f"Connecting to WebSocket: {url}")
 
 
-def log_websocket_success():
+def log_websocket_success() -> None:
     """Log successful WebSocket connection."""
     logger = get_logger()
     logger.info("WebSocket connection established")
 
 
-def log_websocket_failure(error: Exception, retry_count: int):
+def log_websocket_failure(error: Exception, retry_count: int) -> None:
     """Log WebSocket connection failure."""
     logger = get_logger()
     logger.warning(f"WebSocket connection failed (attempt {retry_count}): {error}")
 
 
-def log_binary_analysis(data_size: int):
+def log_binary_analysis(data_size: int) -> None:
     """Log binary data analysis start."""
     logger = get_logger()
     logger.debug(f"Analyzing {data_size} bytes of binary data")
 
 
-def log_token_profile_built(symbol: str, confidence: float, field_count: int):
+def log_token_profile_built(symbol: str, confidence: float, field_count: int) -> None:
     """Log successful token profile construction."""
     logger = get_logger()
     logger.debug(
