@@ -13,8 +13,8 @@
 </p>
 
 > [!IMPORTANT]
-> This project is independent and not affiliated with DexScreener.
-> Use at your own risk f or research purposes only and comply with DexScreener terms.
+> This project is independent and not affiliated with DexScreener.<br>
+> Use at your own risk for research purposes only and comply with DexScreener terms.
 
 ## Install Dexscraper
 
