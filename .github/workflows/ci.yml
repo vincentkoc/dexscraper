@@ -26,8 +26,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install "setuptools_scm[toml]>=6.2"
         VERSION="$(python -c 'from setuptools_scm import get_version; print(get_version(root=".", local_scheme="no-local-version"))')"
+        TAG_ON_HEAD="$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$' | head -n 1 || true)"
         echo "Computed SCM version: ${VERSION}"
         if [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ -n "${TAG_ON_HEAD}" ]]; then
+            echo "✅ main branch is on tagged release commit (${TAG_ON_HEAD}); stable version is expected."
+            exit 0
+          fi
           echo "❌ main branch resolved to a stable release version (${VERSION})."
           echo "   Stable versions must only be produced by tag-based release workflow."
           exit 1

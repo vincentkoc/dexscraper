@@ -1,7 +1,9 @@
 """Cloudflare bypass utilities using cloudscraper."""
 
 import asyncio
+from importlib.metadata import PackageNotFoundError, version as package_version
 import logging
+import re
 import time
 from typing import Any, Optional
 
@@ -15,10 +17,45 @@ class CloudflareBypass:
 
     def __init__(self, debug: bool = False):
         self.debug = debug
+        self.cloudscraper_version = self._detect_cloudscraper_version()
+        self.cloudscraper_major = self._parse_major_version(self.cloudscraper_version)
+        self.supports_v3 = self.cloudscraper_major >= 3
         self.scraper = self._create_scraper()
         self._session_cookies: dict[str, str] = {}
         self._last_session_update: float = 0.0
-        self._session_ttl = 300  # 5 minutes
+        self._session_ttl = 180 if self.supports_v3 else 300
+
+    @staticmethod
+    def _parse_major_version(version_text: str) -> int:
+        """Extract major version number from a version string."""
+        match = re.match(r"^\s*(\d+)", version_text or "")
+        return int(match.group(1)) if match else 0
+
+    @staticmethod
+    def _detect_cloudscraper_version() -> str:
+        """Resolve cloudscraper version from module metadata."""
+        module_version = getattr(cloudscraper, "__version__", "")
+        if module_version:
+            return str(module_version)
+
+        try:
+            return package_version("cloudscraper")
+        except PackageNotFoundError:
+            return "unknown"
+
+    def get_runtime_warning(self) -> Optional[str]:
+        """Return compatibility warning for older cloudscraper versions."""
+        if self.supports_v3:
+            return None
+
+        return (
+            "cloudscraper<3 detected "
+            f"({self.cloudscraper_version}). Cloudflare bypass runs in compatibility "
+            "mode. For improved anti-bot recovery in interactive/one-shot runs, "
+            "install v3 with: "
+            'pip install "cloudscraper @ '
+            'git+https://github.com/VeNoMouS/cloudscraper.git@3.0.0"'
+        )
 
     def _create_scraper(self) -> Any:
         """Create a new cloudscraper session."""
@@ -59,6 +96,9 @@ class CloudflareBypass:
             and current_time - self._last_session_update < self._session_ttl
         ):
             return self._session_cookies
+
+        if self.supports_v3 and self._session_cookies:
+            self._refresh_session()
 
         try:
             # Visit the actual dexscreener.com site to get CF cookies

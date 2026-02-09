@@ -126,6 +126,17 @@ class TestDexScraper:
         with patch.dict("os.environ", {"DEXSCRAPER_PROXY": " http://127.0.0.1:8080 "}):
             assert scraper._resolve_proxy_override() == "http://127.0.0.1:8080"
 
+    def test_cloudflare_runtime_warning_passthrough(self):
+        """DexScraper should expose bypass runtime warning."""
+        with patch("dexscraper.scraper.CloudflareBypass") as bypass_class:
+            bypass_instance = bypass_class.return_value
+            bypass_instance.get_runtime_warning.return_value = "install v3"
+
+            scraper = DexScraper(use_cloudflare_bypass=True)
+            warning = scraper.get_cloudflare_runtime_warning()
+
+        assert warning == "install v3"
+
     def test_numeric_extraction_methods(self):
         """Test numeric data extraction utilities."""
         from dexscraper.utils import (

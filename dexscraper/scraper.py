@@ -116,6 +116,12 @@ class DexScraper:
         self.address_pattern = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
         self.url_pattern = re.compile(r'https?://[^\s<>"]{2,}')
 
+    def get_cloudflare_runtime_warning(self) -> Optional[str]:
+        """Return actionable warning when Cloudflare bypass runs in compatibility mode."""
+        if not self.cf_bypass:
+            return None
+        return self.cf_bypass.get_runtime_warning()
+
     def _get_headers(self) -> dict[str, str]:
         """Get rotated headers to avoid detection."""
         user_agents = [

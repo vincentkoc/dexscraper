@@ -44,6 +44,20 @@ pip install -e .[dev]
 
 </details>
 
+<details>
+<summary>Optional: Cloudflare bypass enhancements (cloudscraper v3)</summary>
+
+```bash
+# Recommended when using --cloudflare-bypass in interactive or --once modes
+pip install "cloudscraper @ git+https://github.com/VeNoMouS/cloudscraper.git@3.0.0"
+```
+
+- `dexscraper` auto-detects cloudscraper major version at runtime.
+- If `<3` is detected, bypass still works in compatibility mode and the CLI prints
+  a one-time warning in non-streaming flows with the install command above.
+
+</details>
+
 ## Why Dexscraper?
 
 DexScreener data is useful, but scraping it consistently is painful: protocol changes, Cloudflare behavior, reconnect logic, and export formatting. **Dexscraper gives you one stable interface** for real-time extraction, filtering, and export, both from CLI and Python code.
@@ -54,7 +68,7 @@ DexScreener data is useful, but scraping it consistently is painful: protocol ch
 - Multi-chain and multi-DEX filtering
 - Trending/top/gainers/new presets
 - Structured token profiles and OHLC/OHLCVT output for tools like Metatrader
-- Optional Cloudflare bypass flow
+- Optional Cloudflare bypass flow (with runtime v3 feature detection)
 - Typed Python SDK + CLI
 
 ## Commands

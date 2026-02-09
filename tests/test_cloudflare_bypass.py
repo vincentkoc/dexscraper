@@ -12,6 +12,45 @@ from dexscraper.cloudflare_bypass import CloudflareBypass
 class TestCloudflareBypass:
     """Test Cloudflare bypass behavior."""
 
+    def test_runtime_warning_for_pre_v3(self):
+        """Should provide upgrade guidance when cloudscraper major version is below 3."""
+        scraper = Mock()
+        scraper.cookies = {}
+        scraper.headers = {"User-Agent": "ua-test"}
+
+        with patch.object(
+            CloudflareBypass, "_detect_cloudscraper_version", return_value="1.2.71"
+        ):
+            with patch(
+                "dexscraper.cloudflare_bypass.cloudscraper.create_scraper",
+                return_value=scraper,
+            ):
+                bypass = CloudflareBypass()
+
+        warning = bypass.get_runtime_warning()
+        assert warning is not None
+        assert "cloudscraper<3 detected (1.2.71)" in warning
+        assert "pip install" in warning
+        assert bypass.supports_v3 is False
+
+    def test_runtime_warning_absent_for_v3(self):
+        """Should not emit compatibility warning when cloudscraper v3 is detected."""
+        scraper = Mock()
+        scraper.cookies = {}
+        scraper.headers = {"User-Agent": "ua-test"}
+
+        with patch.object(
+            CloudflareBypass, "_detect_cloudscraper_version", return_value="3.0.0"
+        ):
+            with patch(
+                "dexscraper.cloudflare_bypass.cloudscraper.create_scraper",
+                return_value=scraper,
+            ):
+                bypass = CloudflareBypass()
+
+        assert bypass.get_runtime_warning() is None
+        assert bypass.supports_v3 is True
+
     @pytest.mark.asyncio
     async def test_session_recovery_on_403(self):
         """Should refresh scraper session and retry after a 403."""

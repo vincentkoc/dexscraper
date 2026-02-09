@@ -74,11 +74,15 @@ GHOST_ASCII = """
 class SlickCLI:
     """Slick, dark terminal interface with Claude Code-inspired UX."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self, use_cloudflare_bypass: bool = False, debug: bool = False
+    ) -> None:
         self.console = Console()
         self.scraper: Optional[DexScraper] = None
         self.session_start = time.time()
         self.extraction_count = 0
+        self.use_cloudflare_bypass = use_cloudflare_bypass
+        self.debug = debug
 
     def clear_screen(self) -> None:
         """Clear terminal screen."""
@@ -145,7 +149,10 @@ class SlickCLI:
     async def extract_data(self) -> ExtractedTokenBatch:
         """Extract token data with progress animation."""
         if not self.scraper:
-            self.scraper = DexScraper(debug=False)
+            self.scraper = DexScraper(
+                debug=self.debug,
+                use_cloudflare_bypass=self.use_cloudflare_bypass,
+            )
         scraper = self.scraper
 
         with Progress(
@@ -356,6 +363,17 @@ class SlickCLI:
         """Main application loop."""
         # Show loading screen
         self.show_ghost_loading()
+
+        if self.use_cloudflare_bypass:
+            if not self.scraper:
+                self.scraper = DexScraper(
+                    debug=self.debug,
+                    use_cloudflare_bypass=self.use_cloudflare_bypass,
+                )
+            warning = self.scraper.get_cloudflare_runtime_warning()
+            if warning:
+                self.console.print(f"[yellow]Warning:[/yellow] {warning}")
+                self.console.print()
 
         while True:
             choice = self.show_main_menu()
@@ -697,6 +715,16 @@ def normalize_legacy_cli_args(argv: list[str]) -> list[str]:
     return argv
 
 
+def emit_cloudflare_runtime_warning(scraper: DexScraper, non_streaming: bool) -> None:
+    """Print a one-time actionable warning for compatibility Cloudflare mode."""
+    if not non_streaming:
+        return
+
+    warning = scraper.get_cloudflare_runtime_warning()
+    if warning:
+        print(f"Warning: {warning}", file=sys.stderr)
+
+
 def parse_chain(value: str) -> Chain:
     """Parse chain from string."""
     try:
@@ -1011,7 +1039,10 @@ Examples:
 
     # Use SlickCLI for rich format
     if args.format == "rich":
-        cli = SlickCLI()
+        cli = SlickCLI(
+            use_cloudflare_bypass=args.cloudflare_bypass,
+            debug=args.debug,
+        )
         await cli.run()
         return
 
@@ -1024,6 +1055,7 @@ Examples:
         config=config,
         use_cloudflare_bypass=args.cloudflare_bypass,
     )
+    emit_cloudflare_runtime_warning(scraper, non_streaming=args.once)
 
     if args.once:
         batch = await scraper.extract_token_data()

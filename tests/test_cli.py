@@ -9,6 +9,7 @@ import pytest
 from dexscraper.cli import (
     build_config_from_args,
     create_token_callback,
+    emit_cloudflare_runtime_warning,
     parse_chain,
     parse_dex_list,
     parse_rank_by,
@@ -268,6 +269,23 @@ class TestConfigBuilding:
 
         config = build_config_from_args(args)
         assert config.filters.chain_ids == [Chain.BASE]
+
+
+class TestCloudflareWarnings:
+    """Test cloudflare compatibility warning behavior in CLI."""
+
+    def test_emit_cloudflare_warning_only_for_non_streaming(self, capsys):
+        """Compatibility warning should be printed only in non-streaming mode."""
+        scraper = Mock()
+        scraper.get_cloudflare_runtime_warning.return_value = "install v3"
+
+        emit_cloudflare_runtime_warning(scraper, non_streaming=False)
+        captured = capsys.readouterr()
+        assert captured.err == ""
+
+        emit_cloudflare_runtime_warning(scraper, non_streaming=True)
+        captured = capsys.readouterr()
+        assert "Warning: install v3" in captured.err
 
 
 class TestCallbacks:
