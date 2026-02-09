@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import cloudscraper
 
@@ -16,7 +16,7 @@ class CloudflareBypass:
     def __init__(self, debug: bool = False):
         self.debug = debug
         self.scraper = self._create_scraper()
-        self._session_cookies: Dict[str, str] = {}
+        self._session_cookies: dict[str, str] = {}
         self._last_session_update: float = 0.0
         self._session_ttl = 300  # 5 minutes
 
@@ -42,14 +42,14 @@ class CloudflareBypass:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._make_request, main_site_url)
 
-    def _store_session_cookies(self) -> Dict[str, str]:
+    def _store_session_cookies(self) -> dict[str, str]:
         """Persist latest cookies from scraper state."""
         self._session_cookies = dict(self.scraper.cookies)
         self._last_session_update = time.time()
         logger.debug("Got %d cookies", len(self._session_cookies))
         return self._session_cookies
 
-    async def get_session_cookies(self, target_url: str) -> Dict[str, str]:
+    async def get_session_cookies(self, target_url: str) -> dict[str, str]:
         """Get valid session cookies by first visiting the main site."""
         current_time = time.time()
 
@@ -76,7 +76,9 @@ class CloudflareBypass:
                 return self._store_session_cookies()
 
             if status_code == 403:
-                logger.warning("Cloudflare returned 403, refreshing session and retrying")
+                logger.warning(
+                    "Cloudflare returned 403, refreshing session and retrying"
+                )
             else:
                 logger.warning(
                     "Failed to get session: HTTP %s; refreshing session and retrying",
@@ -104,12 +106,12 @@ class CloudflareBypass:
             logger.debug("Request failed: %s", e)
             return None
 
-    def get_enhanced_headers(self, base_headers: Dict[str, str]) -> Dict[str, str]:
+    def get_enhanced_headers(self, base_headers: dict[str, str]) -> dict[str, str]:
         """Enhance headers with Cloudflare-friendly values."""
         # Just return the base headers as they're already properly configured
         return base_headers.copy()
 
-    async def prepare_websocket_connection(self, websocket_url: str) -> Dict[str, Any]:
+    async def prepare_websocket_connection(self, websocket_url: str) -> dict[str, Any]:
         """Prepare WebSocket connection with Cloudflare bypass."""
         # Get session cookies first
         cookies = await self.get_session_cookies(websocket_url)

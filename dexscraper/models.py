@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from io import StringIO
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 
 @dataclass
@@ -16,7 +16,7 @@ class PriceData:
     usd: float
     change_24h: Optional[float] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "price": str(self.current),
             "priceUsd": str(self.usd),
@@ -32,7 +32,7 @@ class LiquidityData:
 
     usd: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"liquidity": {"usd": str(self.usd)}}
 
 
@@ -42,7 +42,7 @@ class VolumeData:
 
     h24: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"volume": {"h24": str(self.h24)}}
 
 
@@ -76,7 +76,7 @@ class OHLCData:
         )  # Estimate trades
         return f"{dt.strftime('%Y-%m-%d %H:%M:%S')},{self.open:.8f},{self.high:.8f},{self.low:.8f},{self.close:.8f},{self.volume:.2f},{trades_count}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format."""
         return {
             "timestamp": self.timestamp,
@@ -107,9 +107,9 @@ class TradingPair:
     created_at: Optional[int] = None
     created_at_formatted: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format matching original output."""
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "chain": self.chain,
             "protocol": self.protocol,
             "pairAddress": self.pair_address,
@@ -263,7 +263,7 @@ class TokenProfile:
             )
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format."""
         return {
             # Trading Data
@@ -425,7 +425,7 @@ class TradingViewExporter:
     """Export data in TradingView format."""
 
     @staticmethod
-    def format_ohlcv(ohlc_data: List[OHLCData]) -> str:
+    def format_ohlcv(ohlc_data: list[OHLCData]) -> str:
         """Format OHLC data for TradingView charting library.
 
         Args:
@@ -453,7 +453,7 @@ class BinanceExporter:
     """Export data in Binance API format."""
 
     @staticmethod
-    def format_klines(ohlc_data: List[OHLCData]) -> str:
+    def format_klines(ohlc_data: list[OHLCData]) -> str:
         """Format OHLC data like Binance klines API.
 
         Args:
@@ -489,7 +489,7 @@ class CoinGeckoExporter:
     """Export data in CoinGecko API format."""
 
     @staticmethod
-    def format_market_data(tokens: List[TokenProfile]) -> str:
+    def format_market_data(tokens: list[TokenProfile]) -> str:
         """Format token data like CoinGecko market data API.
 
         Args:
@@ -534,7 +534,7 @@ class PancakeSwapExporter:
     """Export data in PancakeSwap format."""
 
     @staticmethod
-    def format_tokens(tokens: List[TokenProfile]) -> str:
+    def format_tokens(tokens: list[TokenProfile]) -> str:
         """Format token data for PancakeSwap-style APIs.
 
         Args:
@@ -565,7 +565,7 @@ class ExcelExporter:
     """Export data to Excel-compatible formats."""
 
     @staticmethod
-    def format_tokens_csv(tokens: List[TokenProfile]) -> str:
+    def format_tokens_csv(tokens: list[TokenProfile]) -> str:
         """Format tokens for Excel import.
 
         Args:
@@ -627,7 +627,7 @@ class JsonLinesExporter:
     """Export data in JSON Lines format."""
 
     @staticmethod
-    def format_tokens(tokens: List[TokenProfile]) -> str:
+    def format_tokens(tokens: list[TokenProfile]) -> str:
         """Format tokens as JSON Lines (JSONL).
 
         Args:
@@ -642,7 +642,7 @@ class JsonLinesExporter:
         return "\n".join(lines)
 
     @staticmethod
-    def format_ohlc(ohlc_data: List[OHLCData]) -> str:
+    def format_ohlc(ohlc_data: list[OHLCData]) -> str:
         """Format OHLC data as JSON Lines.
 
         Args:

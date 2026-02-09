@@ -246,9 +246,10 @@ class TestDexScraper:
         scraper = DexScraper(max_retries=1)
         mock_ws = Mock()
 
-        with patch(
-            "dexscraper.scraper._CONNECT_HEADERS_PARAM", header_param
-        ), patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
+        with (
+            patch("dexscraper.scraper._CONNECT_HEADERS_PARAM", header_param),
+            patch("websockets.connect", new_callable=AsyncMock) as mock_connect,
+        ):
             mock_connect.return_value = mock_ws
             websocket = await scraper._connect()
 
@@ -256,7 +257,9 @@ class TestDexScraper:
         kwargs = mock_connect.call_args.kwargs
         assert header_param in kwargs
         other_param = (
-            "extra_headers" if header_param == "additional_headers" else "additional_headers"
+            "extra_headers"
+            if header_param == "additional_headers"
+            else "additional_headers"
         )
         assert other_param not in kwargs
 
@@ -277,9 +280,11 @@ class TestDexScraper:
         scraper = DexScraper(max_retries=1)
         mock_ws = Mock()
 
-        with patch.dict("os.environ", {"DEXSCRAPER_PROXY": env_value}), patch(
-            "dexscraper.scraper._CONNECT_SUPPORTS_PROXY", supports_proxy
-        ), patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
+        with (
+            patch.dict("os.environ", {"DEXSCRAPER_PROXY": env_value}),
+            patch("dexscraper.scraper._CONNECT_SUPPORTS_PROXY", supports_proxy),
+            patch("websockets.connect", new_callable=AsyncMock) as mock_connect,
+        ):
             mock_connect.return_value = mock_ws
             websocket = await scraper._connect()
 
@@ -296,11 +301,14 @@ class TestDexScraper:
         scraper = DexScraper(max_retries=2)
         mock_ws = Mock()
 
-        with patch.object(scraper, "_rate_limit", new=AsyncMock()), patch.object(
-            scraper, "_get_backoff_delay", return_value=0.01
-        ), patch("dexscraper.scraper.asyncio.sleep", new_callable=AsyncMock) as sleep_mock, patch(
-            "websockets.connect", new_callable=AsyncMock
-        ) as mock_connect:
+        with (
+            patch.object(scraper, "_rate_limit", new=AsyncMock()),
+            patch.object(scraper, "_get_backoff_delay", return_value=0.01),
+            patch(
+                "dexscraper.scraper.asyncio.sleep", new_callable=AsyncMock
+            ) as sleep_mock,
+            patch("websockets.connect", new_callable=AsyncMock) as mock_connect,
+        ):
             mock_connect.side_effect = [Exception("temporary failure"), mock_ws]
             websocket = await scraper._connect()
 
@@ -333,8 +341,13 @@ class TestDexScraper:
         websocket.close = AsyncMock()
         extracted_tokens = [TokenProfile(symbol="TEST", price=0.001)]
 
-        with patch.object(scraper, "_connect", new=AsyncMock(return_value=websocket)), patch.object(
-            scraper, "_extract_all_tokens", new=AsyncMock(return_value=extracted_tokens)
+        with (
+            patch.object(scraper, "_connect", new=AsyncMock(return_value=websocket)),
+            patch.object(
+                scraper,
+                "_extract_all_tokens",
+                new=AsyncMock(return_value=extracted_tokens),
+            ),
         ):
             batch = await scraper.extract_token_data()
 
@@ -351,9 +364,12 @@ class TestDexScraper:
             coro.close()
             return expected
 
-        with patch(
-            "dexscraper.scraper.asyncio.get_running_loop", side_effect=RuntimeError
-        ), patch("dexscraper.scraper.asyncio.run", side_effect=fake_run) as run_mock:
+        with (
+            patch(
+                "dexscraper.scraper.asyncio.get_running_loop", side_effect=RuntimeError
+            ),
+            patch("dexscraper.scraper.asyncio.run", side_effect=fake_run) as run_mock,
+        ):
             result = scraper.extract_token_data_sync()
 
         run_mock.assert_called_once()
@@ -363,7 +379,9 @@ class TestDexScraper:
     async def test_extract_token_data_sync_raises_inside_event_loop(self):
         """Sync API should fail fast when called from async context."""
         scraper = DexScraper()
-        with pytest.raises(RuntimeError, match="cannot run inside an active event loop"):
+        with pytest.raises(
+            RuntimeError, match="cannot run inside an active event loop"
+        ):
             scraper.extract_token_data_sync()
 
 

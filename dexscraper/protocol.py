@@ -3,7 +3,7 @@
 import logging
 import struct
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 from .models import LiquidityData, PriceData, TradingPair, VolumeData
 
@@ -39,7 +39,7 @@ def clean_string(s: str) -> str:
         return ""
 
 
-def decode_metrics(data: bytes, start_pos: int) -> Tuple[Dict[str, float], int]:
+def decode_metrics(data: bytes, start_pos: int) -> tuple[dict[str, float], int]:
     """Decode numeric values from binary data."""
     try:
         if start_pos + 64 > len(data):
@@ -281,7 +281,7 @@ def decode_pair_from_text(data: bytes) -> Optional[TradingPair]:
         return None
 
 
-def parse_variable_length(data: bytes) -> List[TradingPair]:
+def parse_variable_length(data: bytes) -> list[TradingPair]:
     """Parse trading pairs using variable-length approach based on pattern analysis."""
     pairs = []
 
@@ -359,7 +359,7 @@ def parse_variable_length(data: bytes) -> List[TradingPair]:
     return pairs
 
 
-def parse_message(message: bytes) -> List[TradingPair]:
+def parse_message(message: bytes) -> list[TradingPair]:
     """Parse a complete WebSocket message and extract trading pairs."""
     try:
         # Try enhanced parsing first for real numeric data

@@ -72,7 +72,7 @@ async def test_enhanced_ohlc_output():
     # Show sample batch records
     for i, ohlc in enumerate(batch_ohlc[:5]):
         print(
-            f"  {i+1}: {datetime.fromtimestamp(ohlc.timestamp).strftime('%H:%M:%S')} | "
+            f"  {i + 1}: {datetime.fromtimestamp(ohlc.timestamp).strftime('%H:%M:%S')} | "
             f"${ohlc.close:.8f} | Vol: ${ohlc.volume:,.0f}"
         )
 

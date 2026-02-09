@@ -10,9 +10,10 @@ import re
 import ssl
 import struct
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import websockets
+
 try:
     from websockets.asyncio.client import ClientConnection as WebSocketConnection
 except Exception:  # pragma: no cover - fallback for older websockets layouts
@@ -113,7 +114,7 @@ class DexScraper:
         self.address_pattern = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
         self.url_pattern = re.compile(r'https?://[^\s<>"]{2,}')
 
-    def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self) -> dict[str, str]:
         """Get rotated headers to avoid detection."""
         user_agents = [
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:142.0) Gecko/20100101 Firefox/142.0",
@@ -196,7 +197,7 @@ class DexScraper:
                 connect_headers = headers.copy()
                 connect_headers.pop("Origin", None)
 
-                connect_kwargs: Dict[str, Any] = {
+                connect_kwargs: dict[str, Any] = {
                     _CONNECT_HEADERS_PARAM: connect_headers,
                     "origin": "https://dexscreener.com",
                     "ssl": ssl_context,
@@ -297,7 +298,7 @@ class DexScraper:
 
     async def _extract_all_tokens(
         self, data: bytes, data_start: int
-    ) -> List[TokenProfile]:
+    ) -> list[TokenProfile]:
         """Extract tokens using proven deep analysis methodology from ANALYSIS.md."""
         logger.debug(
             "Using validated deep analysis approach from analyze_protocol_deep.py..."
@@ -333,7 +334,7 @@ class DexScraper:
 
     def _extract_real_token_names(
         self, printable: str, data_start: int
-    ) -> Dict[int, str]:
+    ) -> dict[int, str]:
         """Extract real token symbols using proven deep analysis patterns."""
         token_names = {}
 
@@ -450,7 +451,7 @@ class DexScraper:
                 all_symbols.append(match)
 
         # Remove duplicates and sort by frequency
-        symbol_counts: Dict[str, int] = {}
+        symbol_counts: dict[str, int] = {}
         for symbol in all_symbols:
             symbol_upper = symbol.upper()
             symbol_counts[symbol_upper] = symbol_counts.get(symbol_upper, 0) + 1
@@ -555,7 +556,7 @@ class DexScraper:
 
         return None
 
-    def _extract_numeric_clusters(self, data: bytes, data_start: int) -> List[Dict]:
+    def _extract_numeric_clusters(self, data: bytes, data_start: int) -> list[dict]:
         """Extract numeric clusters using validated methodology."""
         clusters = []
         window_size = 500  # Validated window size
@@ -588,7 +589,7 @@ class DexScraper:
 
     def _extract_numerics_from_window(
         self, window: bytes, base_offset: int
-    ) -> List[Tuple]:
+    ) -> list[tuple]:
         """Extract all numeric values from window with validation."""
         values = []
 
@@ -646,10 +647,10 @@ class DexScraper:
         )
 
     def _classify_numeric_values(
-        self, values: List[Tuple[int, float, str]]
-    ) -> Dict[str, List[Tuple[int, float, str]]]:
+        self, values: list[tuple[int, float, str]]
+    ) -> dict[str, list[tuple[int, float, str]]]:
         """Classify numeric values by probable field type using validated ranges."""
-        classified: Dict[str, List[Tuple[int, float, str]]] = {
+        classified: dict[str, list[tuple[int, float, str]]] = {
             "prices": [],
             "txns": [],
             "makers": [],
@@ -711,12 +712,12 @@ class DexScraper:
 
     def _extract_metadata_patterns(
         self, data: bytes, data_start: int
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         """Extract metadata patterns (addresses, URLs, protocols)."""
         # Convert to text for pattern matching
         printable_text = "".join(chr(b) if 32 <= b <= 126 else " " for b in data)
 
-        metadata: Dict[str, List[Dict[str, Any]]] = {
+        metadata: dict[str, list[dict[str, Any]]] = {
             "addresses": [],
             "urls": [],
             "protocols": [],
@@ -796,12 +797,14 @@ class DexScraper:
         else:
             return "unknown"
 
-    def _extract_token_symbols(self, text: str, data_start: int) -> List[Dict[str, Any]]:
+    def _extract_token_symbols(
+        self, text: str, data_start: int
+    ) -> list[dict[str, Any]]:
         """Extract potential token symbols and names from binary data."""
         import re
 
-        token_symbols: List[Dict[str, Any]] = []
-        symbol_counts: Dict[str, int] = {}  # Track frequency of each symbol
+        token_symbols: list[dict[str, Any]] = []
+        symbol_counts: dict[str, int] = {}  # Track frequency of each symbol
 
         # Pattern 1: Common crypto token patterns (2-10 uppercase letters)
         crypto_pattern = re.compile(r"\b[A-Z]{2,10}\b")
@@ -1089,7 +1092,7 @@ class DexScraper:
         return token_symbols[:20]
 
     def _extract_best_token_symbol(
-        self, metadata: Dict[str, List[Dict[str, Any]]], index: int
+        self, metadata: dict[str, list[dict[str, Any]]], index: int
     ) -> str:
         """Extract the best token symbol from metadata, with fallback to placeholder."""
         tokens = metadata.get("tokens", [])
@@ -1098,7 +1101,7 @@ class DexScraper:
             return f"UNKNOWN_{index:02d}"
 
         # Sort by confidence, frequency, and type preference
-        def symbol_score(token_info: Dict[str, Any]) -> float:
+        def symbol_score(token_info: dict[str, Any]) -> float:
             confidence = token_info.get("confidence", 0.0)
             score = float(confidence) if isinstance(confidence, (int, float)) else 0.0
 
@@ -1153,10 +1156,10 @@ class DexScraper:
         return f"UNKNOWN_{index:02d}"
 
     def _group_clusters_to_tokens(
-        self, clusters: List[Dict[str, Any]], metadata: Dict[str, List[Dict[str, Any]]]
-    ) -> List[Dict[str, Any]]:
+        self, clusters: list[dict[str, Any]], metadata: dict[str, list[dict[str, Any]]]
+    ) -> list[dict[str, Any]]:
         """Group numeric clusters with metadata to form complete token records."""
-        token_records: List[Dict[str, Any]] = []
+        token_records: list[dict[str, Any]] = []
 
         # Sort clusters by field completeness
         clusters.sort(key=lambda c: int(c.get("field_types", 0)), reverse=True)
@@ -1164,7 +1167,7 @@ class DexScraper:
         for cluster in clusters[:20]:  # Process top 20 clusters
             # Find relevant metadata within reasonable distance
             cluster_start = int(cluster.get("start_pos", 0))
-            relevant_metadata: Dict[str, List[Dict[str, Any]]] = {
+            relevant_metadata: dict[str, list[dict[str, Any]]] = {
                 "addresses": [],
                 "urls": [],
                 "protocols": [],
@@ -1206,7 +1209,7 @@ class DexScraper:
         return token_records
 
     def _calculate_completeness_score(
-        self, cluster: Dict[str, Any], metadata: Dict[str, List[Dict[str, Any]]]
+        self, cluster: dict[str, Any], metadata: dict[str, list[dict[str, Any]]]
     ) -> float:
         """Calculate completeness score for a token record."""
         score = 0.0
@@ -1228,7 +1231,7 @@ class DexScraper:
 
         return score / 100.0  # Normalize to 0-1 range
 
-    def _build_token_profile(self, record: Dict, index: int) -> TokenProfile:
+    def _build_token_profile(self, record: dict, index: int) -> TokenProfile:
         """Build complete token profile from record data."""
         profile = TokenProfile()
 
@@ -1318,7 +1321,7 @@ class DexScraper:
         return profile
 
     # Legacy compatibility methods
-    async def get_pairs_once(self) -> Optional[List[TradingPair]]:
+    async def get_pairs_once(self) -> Optional[list[TradingPair]]:
         """Get pairs using enhanced extraction, return as legacy format."""
         batch = await self.extract_token_data()
         if batch.tokens:
@@ -1328,7 +1331,7 @@ class DexScraper:
     async def stream_pairs(
         self,
         callback: Optional[
-            Callable[[Union[List[TradingPair], ExtractedTokenBatch]], None]
+            Callable[[Union[list[TradingPair], ExtractedTokenBatch]], None]
         ] = None,
         output_format: str = "json",
         use_enhanced_extraction: bool = True,
@@ -1386,7 +1389,7 @@ class DexScraper:
             for ohlc in ohlc_data[:10]:  # Top 10
                 print(ohlc.to_mt5_format())
 
-    async def _output_pairs(self, pairs: List[TradingPair], format_type: str) -> None:
+    async def _output_pairs(self, pairs: list[TradingPair], format_type: str) -> None:
         """Output pairs in specified format (legacy)."""
         if format_type == "json":
             output = {

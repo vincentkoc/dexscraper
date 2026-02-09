@@ -29,9 +29,9 @@ def _resolve_version() -> str:
         return package_version("dexscraper")
     except PackageNotFoundError:
         try:
-            from ._version import version as scm_version
+            from setuptools_scm import get_version
 
-            return scm_version
+            return get_version(root="..", relative_to=__file__)
         except Exception:
             return "0.0.0"
 

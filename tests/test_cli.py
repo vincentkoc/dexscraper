@@ -437,7 +437,9 @@ class TestCLIIntegration:
                     except SystemExit:
                         pass
 
-                assert mock_scraper_class.call_args.kwargs["use_cloudflare_bypass"] is True
+                assert (
+                    mock_scraper_class.call_args.kwargs["use_cloudflare_bypass"] is True
+                )
 
     @pytest.mark.asyncio
     async def test_cli_argument_parsing(self):

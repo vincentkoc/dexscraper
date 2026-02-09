@@ -5,7 +5,7 @@ import asyncio
 import sys
 import time
 from datetime import datetime
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 # Rich types will be imported in the try block below
 
@@ -224,11 +224,11 @@ class SlickCLI:
     def format_large_number(self, num: float) -> str:
         """Format large numbers with K, M, B suffixes."""
         if num >= 1_000_000_000:
-            return f"${num/1_000_000_000:.1f}B"
+            return f"${num / 1_000_000_000:.1f}B"
         elif num >= 1_000_000:
-            return f"${num/1_000_000:.1f}M"
+            return f"${num / 1_000_000:.1f}M"
         elif num >= 1_000:
-            return f"${num/1_000:.0f}K"
+            return f"${num / 1_000:.0f}K"
         else:
             return f"${num:.0f}"
 
@@ -438,9 +438,9 @@ class SlickCLI:
         # Calculate total volume
         total_vol = sum(t.volume_24h for t in batch.tokens if t.volume_24h) or 0
         if total_vol >= 1_000_000:
-            vol_str = f"${total_vol/1_000_000:.1f}M"
+            vol_str = f"${total_vol / 1_000_000:.1f}M"
         else:
-            vol_str = f"${total_vol/1_000:.0f}K"
+            vol_str = f"${total_vol / 1_000:.0f}K"
 
         right_stats.append("Volume: ", style="bright_white")
         right_stats.append(f"{vol_str}", style="bold bright_green")
@@ -545,12 +545,12 @@ class SlickCLI:
         time.sleep(1)
 
 
-def create_callback(format_type: str) -> Callable[[List[TradingPair]], None]:
+def create_callback(format_type: str) -> Callable[[list[TradingPair]], None]:
     """Create a callback function for the specified format."""
     console = Console() if RICH_AVAILABLE else None
     rich_display = SlickCLI() if console else None
 
-    def callback(pairs: List[TradingPair]) -> None:
+    def callback(pairs: list[TradingPair]) -> None:
         if format_type == "json":
             import json
 
@@ -671,7 +671,7 @@ def parse_rank_by(value: str) -> RankBy:
         )
 
 
-def parse_dex_list(value: str) -> List[DEX]:
+def parse_dex_list(value: str) -> list[DEX]:
     """Parse comma-separated list of DEXs."""
     dexs = []
     for dex_str in value.split(","):

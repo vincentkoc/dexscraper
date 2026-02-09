@@ -122,9 +122,9 @@ class TestBinaryProtocolEdgeCases:
             if expected_valid:
                 assert is_valid, f"Should be valid: price={price}, volume={volume}"
             else:
-                assert (
-                    not is_valid
-                ), f"Should be invalid: price={price}, volume={volume}"
+                assert not is_valid, (
+                    f"Should be invalid: price={price}, volume={volume}"
+                )
 
     def test_solana_address_patterns(self):
         """Test Solana address extraction patterns."""
@@ -154,9 +154,9 @@ class TestBinaryProtocolEdgeCases:
             binary_data = url.encode("ascii") + b"\x00\x01\x02"
             extracted = extract_urls(binary_data)
             # URL should be extracted (possibly cleaned)
-            assert any(
-                url.split("/")[-1] in ext_url for ext_url in extracted
-            ), f"Should extract URL component from: {url}"
+            assert any(url.split("/")[-1] in ext_url for ext_url in extracted), (
+                f"Should extract URL component from: {url}"
+            )
 
 
 class TestTokenProfileEdgeCases:

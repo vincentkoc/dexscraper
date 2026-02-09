@@ -6,14 +6,15 @@ import re
 import struct
 import time
 from datetime import datetime, timezone
-from typing import Any, Awaitable, List, Optional, TypeVar
+from typing import Any, Optional, TypeVar
+from collections.abc import Awaitable
 
 T = TypeVar("T")
 
 
 def extract_floats_from_bytes(
     data: bytes, offset: int = 0, count: Optional[int] = None
-) -> List[float]:
+) -> list[float]:
     """Extract IEEE 754 single-precision floats from binary data.
 
     Args:
@@ -48,7 +49,7 @@ def extract_floats_from_bytes(
 
 def extract_doubles_from_bytes(
     data: bytes, offset: int = 0, count: Optional[int] = None
-) -> List[float]:
+) -> list[float]:
     """Extract IEEE 754 double-precision floats from binary data.
 
     Args:
@@ -107,7 +108,7 @@ def is_valid_float(value: float) -> bool:
     return True
 
 
-def extract_solana_addresses(data: bytes) -> List[str]:
+def extract_solana_addresses(data: bytes) -> list[str]:
     """Extract Solana Base58 addresses from binary data.
 
     Args:
@@ -135,7 +136,7 @@ def extract_solana_addresses(data: bytes) -> List[str]:
     return list(set(addresses))  # Remove duplicates
 
 
-def extract_urls(data: bytes) -> List[str]:
+def extract_urls(data: bytes) -> list[str]:
     """Extract URLs from binary data.
 
     Args:
@@ -211,8 +212,8 @@ def is_valid_url(url: str) -> bool:
 
 
 def cluster_numeric_values(
-    values: List[float], tolerance: float = 0.05
-) -> List[List[float]]:
+    values: list[float], tolerance: float = 0.05
+) -> list[list[float]]:
     """Cluster numeric values by proximity.
 
     Args:
@@ -348,11 +349,11 @@ def format_volume(value: Optional[float]) -> str:
         return "N/A"
 
     if abs(value) >= 1_000_000_000:  # Billions
-        return f"${value/1_000_000_000:.2f}B"
+        return f"${value / 1_000_000_000:.2f}B"
     elif abs(value) >= 1_000_000:  # Millions
-        return f"${value/1_000_000:.2f}M"
+        return f"${value / 1_000_000:.2f}M"
     elif abs(value) >= 1_000:  # Thousands
-        return f"${value/1_000:.2f}K"
+        return f"${value / 1_000:.2f}K"
     else:
         return f"${value:.2f}"
 
@@ -473,7 +474,7 @@ class DataBuffer:
 
     def __init__(self, max_size: int = 1000):
         self.max_size = max_size
-        self.buffer: List[Any] = []
+        self.buffer: list[Any] = []
         self.index = 0
 
     def append(self, item: Any) -> None:
@@ -484,7 +485,7 @@ class DataBuffer:
             self.buffer[self.index] = item
             self.index = (self.index + 1) % self.max_size
 
-    def get_recent(self, count: int = 10) -> List[Any]:
+    def get_recent(self, count: int = 10) -> list[Any]:
         """Get most recent items."""
         if len(self.buffer) <= count:
             return self.buffer[:]

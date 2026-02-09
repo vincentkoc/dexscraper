@@ -2,15 +2,15 @@
 
 import logging
 import struct
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 from .models import LiquidityData, PriceData, TradingPair, VolumeData
 
 logger = logging.getLogger(__name__)
 
-NumericSeries = List[Tuple[int, float]]
-NumericClusterData = Dict[str, NumericSeries]
-NumericCluster = Tuple[int, NumericClusterData]
+NumericSeries = list[tuple[int, float]]
+NumericClusterData = dict[str, NumericSeries]
+NumericCluster = tuple[int, NumericClusterData]
 
 
 class EnhancedProtocolParser:
@@ -19,7 +19,7 @@ class EnhancedProtocolParser:
     def __init__(self) -> None:
         self.debug_mode = False
 
-    def parse_message(self, data: bytes) -> List[TradingPair]:
+    def parse_message(self, data: bytes) -> list[TradingPair]:
         """Parse binary message and extract real trading pair data."""
         try:
             pairs_pos = data.find(b"pairs")
@@ -47,7 +47,7 @@ class EnhancedProtocolParser:
             logger.error(f"Error parsing enhanced protocol message: {e}")
             return []
 
-    def _extract_trading_pairs(self, data: bytes) -> List[TradingPair]:
+    def _extract_trading_pairs(self, data: bytes) -> list[TradingPair]:
         """Extract trading pairs with real numeric data."""
         pairs = []
 
@@ -75,7 +75,7 @@ class EnhancedProtocolParser:
 
         return pairs[:50]  # Limit to 50 pairs to avoid overwhelming output
 
-    def _find_numeric_clusters(self, data: bytes) -> List[NumericCluster]:
+    def _find_numeric_clusters(self, data: bytes) -> list[NumericCluster]:
         """Find clusters of numeric data that likely represent trading pairs."""
         clusters = []
 
@@ -156,8 +156,8 @@ class EnhancedProtocolParser:
         return data
 
     def _deduplicate_clusters(
-        self, clusters: List[NumericCluster]
-    ) -> List[NumericCluster]:
+        self, clusters: list[NumericCluster]
+    ) -> list[NumericCluster]:
         """Remove overlapping clusters, keeping the best ones."""
         if not clusters:
             return []
@@ -169,8 +169,8 @@ class EnhancedProtocolParser:
 
         clusters.sort(key=cluster_score, reverse=True)
 
-        unique: List[NumericCluster] = []
-        used_ranges: List[Tuple[int, int]] = []
+        unique: list[NumericCluster] = []
+        used_ranges: list[tuple[int, int]] = []
 
         for offset, data in clusters:
             # Check if this overlaps significantly with existing clusters
@@ -187,7 +187,7 @@ class EnhancedProtocolParser:
         return unique[:20]  # Limit to top 20 clusters
 
     def _parse_pair_from_cluster(
-        self, full_data: bytes, cluster_start: int, cluster_data: Dict
+        self, full_data: bytes, cluster_start: int, cluster_data: dict
     ) -> Optional[TradingPair]:
         """Parse a trading pair from a numeric cluster."""
         try:
@@ -267,7 +267,7 @@ class EnhancedProtocolParser:
             logger.debug(f"Error creating pair from cluster: {e}")
             return None
 
-    def _fallback_text_parsing(self, data: bytes) -> List[TradingPair]:
+    def _fallback_text_parsing(self, data: bytes) -> list[TradingPair]:
         """Fallback to text-based parsing when numeric clustering fails."""
         # Use existing text-based approach as fallback
         from .protocol import decode_pair_from_text
@@ -292,6 +292,6 @@ class EnhancedProtocolParser:
 enhanced_parser = EnhancedProtocolParser()
 
 
-def parse_message_enhanced(data: bytes) -> List[TradingPair]:
+def parse_message_enhanced(data: bytes) -> list[TradingPair]:
     """Enhanced parsing function that extracts real numeric data."""
     return enhanced_parser.parse_message(data)

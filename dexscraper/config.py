@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Optional
 
 
 class Chain(Enum):
@@ -78,10 +78,10 @@ class Filters:
     """Complete filter configuration for DexScreener queries."""
 
     # Chain filters
-    chain_ids: List[Chain] = field(default_factory=lambda: [Chain.SOLANA])
+    chain_ids: list[Chain] = field(default_factory=lambda: [Chain.SOLANA])
 
     # DEX filters
-    dex_ids: List[DEX] = field(default_factory=list)
+    dex_ids: list[DEX] = field(default_factory=list)
 
     # Liquidity filters
     liquidity_min: Optional[int] = None
@@ -131,7 +131,7 @@ class Filters:
     profile: Optional[int] = None  # Include profile data (0 or 1)
     max_launchpad_progress: Optional[float] = None  # Max launchpad progress %
 
-    def to_query_params(self) -> Dict[str, str]:
+    def to_query_params(self) -> dict[str, str]:
         """Convert filters to WebSocket query parameters."""
         params = {}
 
@@ -263,9 +263,7 @@ class ScrapingConfig:
             # DexScreener expects trendingScore* ranking on the h24 endpoint.
             timeframe_value = Timeframe.H24.value
 
-        base_url = (
-            f"wss://io.dexscreener.com/dex/screener/v5/pairs/{timeframe_value}/1"
-        )
+        base_url = f"wss://io.dexscreener.com/dex/screener/v5/pairs/{timeframe_value}/1"
 
         params = {
             "rankBy[key]": self.rank_by.value,

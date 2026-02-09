@@ -2,7 +2,7 @@
 """Pytest configuration and fixtures for dexscraper tests."""
 
 import asyncio
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 
