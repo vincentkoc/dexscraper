@@ -1,0 +1,34 @@
+name: Auto-assign self
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign to vincentkoc
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const assignee = "vincentkoc";
+            const target = context.payload.issue || context.payload.pull_request;
+
+            if (!target || !target.number) {
+              core.setFailed('No issue or pull request found in event payload.');
+              return;
+            }
+
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: target.number,
+              assignees: [assignee],
+            });
