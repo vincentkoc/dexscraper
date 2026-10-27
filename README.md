@@ -16,6 +16,14 @@
 > This project is independent and not affiliated with DexScreener.<br>
 > Use at your own risk for research purposes only and comply with DexScreener terms.
 
+> [!WARNING]
+> The unofficial DexScreener screener WebSocket endpoints under
+> `wss://io.dexscreener.com/dex/screener/...` now return **404** and are
+> treated as dead. Prefer the [official DexScreener API](https://docs.dexscreener.com/api/reference)
+> (`https://api.dexscreener.com/...`) for supported market data access.
+> Streaming via this package's historical `io.dexscreener.com` WebSocket
+> path is not currently available.
+
 ## Install Dexscraper
 
 <details open>
