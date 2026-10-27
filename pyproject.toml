@@ -109,7 +109,8 @@ addopts = [
 ]
 markers = [
     "slow: marks tests as slow",
-    "integration: marks tests as integration tests",
+    "integration: live network / WebSocket tests (require DEXSCRAPER_LIVE=1)",
+    "live: alias for integration (require DEXSCRAPER_LIVE=1)",
 ]
 asyncio_mode = "auto"
 

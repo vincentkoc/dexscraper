@@ -23,14 +23,15 @@ endef
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup-venv install install-dev test lint format mypy check precommit-install precommit build clean
+.PHONY: help setup-venv install install-dev test test-live lint format mypy check precommit-install precommit build clean
 
 help:
 	@echo "Available targets:"
 	@echo "  setup-venv       Create virtual environment in $(VENV)"
 	@echo "  install          Install package"
 	@echo "  install-dev      Install package with dev dependencies"
-	@echo "  test             Run test suite"
+	@echo "  test             Run test suite (offline; skips live network)"
+	@echo "  test-live        Run live WebSocket tests (DEXSCRAPER_LIVE=1)"
 	@echo "  lint             Run Ruff lint checks"
 	@echo "  format           Apply Ruff formatting/fixes"
 	@echo "  mypy             Run static type checking"
@@ -53,7 +54,11 @@ install-dev:
 
 test:
 	$(call warn_if_no_venv)
-	$(PYTHON) -m pytest -q
+	$(PYTHON) -m pytest -q -m "not integration and not live"
+
+test-live:
+	$(call warn_if_no_venv)
+	DEXSCRAPER_LIVE=1 $(PYTHON) -m pytest -q -m "integration or live"
 
 lint:
 	$(call warn_if_no_venv)

@@ -37,15 +37,19 @@ We welcome contributions! This guide will help you get started with developing a
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run offline unit tests (default; live WebSocket tests are skipped)
 pytest
+# or: make test
 
 # Run with coverage
 pytest --cov=dexscraper --cov-report=html
 
-# Run specific test categories
-pytest -m integration  # Integration tests
-pytest -m "not slow"   # Skip slow tests
+# Run live network / WebSocket tests (hits DexScreener; may hang or fail offline)
+DEXSCRAPER_LIVE=1 pytest -m integration
+# or: make test-live
+
+# Skip slow tests
+pytest -m "not slow"
 
 # Run specific test file
 pytest tests/test_scraper.py -v
