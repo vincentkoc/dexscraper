@@ -2,11 +2,12 @@
 
 import argparse
 import asyncio
+from collections.abc import Callable
+from datetime import datetime
 import json
+from pathlib import Path
 import sys
 import time
-from datetime import datetime
-from typing import Callable, Optional
 
 # Rich types will be imported in the try block below
 
@@ -38,8 +39,8 @@ except ImportError:
     RICH_AVAILABLE = False
 
 from .config import (
-    Chain,
     DEX,
+    Chain,
     Filters,
     Order,
     PresetConfigs,
@@ -78,7 +79,7 @@ class SlickCLI:
         self, use_cloudflare_bypass: bool = False, debug: bool = False
     ) -> None:
         self.console = Console()
-        self.scraper: Optional[DexScraper] = None
+        self.scraper: DexScraper | None = None
         self.session_start = time.time()
         self.extraction_count = 0
         self.use_cloudflare_bypass = use_cloudflare_bypass
@@ -326,7 +327,7 @@ class SlickCLI:
             default="1",
         )
 
-        format_name, ext, _ = formats[choice]
+        _format_name, ext, _ = formats[choice]
         filename = f"dexscraper_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{ext}"
 
         # Extract and save
@@ -336,21 +337,22 @@ class SlickCLI:
             import json
 
             data = [token.__dict__ for token in batch.tokens]
-            with open(filename, "w") as f:
-                json.dump(data, f, indent=2, default=str)
+
+            def _write_json() -> None:
+                with Path(filename).open("w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, default=str)
+
+            await asyncio.to_thread(_write_json)
         elif choice == "2":  # CSV
             content = batch.to_csv_string("basic")
-            with open(filename, "w") as f:
-                f.write(content)
+            await asyncio.to_thread(Path(filename).write_text, content, "utf-8")
         elif choice == "3":  # MT5
             ohlc_batch = batch.to_ohlc_batch()
             content = "\n".join([ohlc.to_mt5_format() for ohlc in ohlc_batch])
-            with open(filename, "w") as f:
-                f.write(content)
+            await asyncio.to_thread(Path(filename).write_text, content, "utf-8")
         elif choice == "4":  # OHLCV
             content = batch.to_csv_string("ohlcv")
-            with open(filename, "w") as f:
-                f.write(content)
+            await asyncio.to_thread(Path(filename).write_text, content, "utf-8")
 
         self.console.print(f"\n[bright_green]✓ Exported to: {filename}[/bright_green]")
         self.console.print(
@@ -396,7 +398,7 @@ class SlickCLI:
                 self.console.print(
                     Align.center("[dim white]👻 Fading into the void...[/dim white]")
                 )
-                time.sleep(1)
+                await asyncio.sleep(1)
                 break
 
     def create_header_panel(self) -> Panel:
@@ -1062,10 +1064,14 @@ Examples:
         if batch.tokens:
             if args.output:
                 serialized = build_batch_output(batch, args.format, args.limit)
-                with open(args.output, "w", encoding="utf-8") as output_file:
-                    output_file.write(serialized)
-                    if serialized and not serialized.endswith("\n"):
-                        output_file.write("\n")
+
+                def _write_output() -> None:
+                    payload = (
+                        serialized if serialized.endswith("\n") else f"{serialized}\n"
+                    )
+                    Path(args.output).write_text(payload, encoding="utf-8")
+
+                await asyncio.to_thread(_write_output)
             else:
                 callback = create_token_callback(args.format, args.limit)
                 callback(batch)
@@ -1087,7 +1093,17 @@ Examples:
                     if batch.tokens:
                         callback(batch)
                     await asyncio.sleep(5)  # Wait between extractions
-                except Exception as e:
+                except (
+                    ValueError,
+                    TypeError,
+                    IndexError,
+                    OverflowError,
+                    UnicodeDecodeError,
+                    KeyError,
+                    OSError,
+                    AttributeError,
+                    RuntimeError,
+                ) as e:
                     if args.debug:
                         print(f"Extraction error: {e}", file=sys.stderr)
                     await asyncio.sleep(10)  # Wait longer on error
@@ -1102,7 +1118,17 @@ def cli_main() -> None:
     except KeyboardInterrupt:
         print("\nStopped by user", file=sys.stderr)
         sys.exit(0)
-    except Exception as e:
+    except (
+        ValueError,
+        TypeError,
+        IndexError,
+        OverflowError,
+        UnicodeDecodeError,
+        KeyError,
+        OSError,
+        AttributeError,
+        RuntimeError,
+    ) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 

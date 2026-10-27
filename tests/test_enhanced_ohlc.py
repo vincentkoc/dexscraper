@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+from pathlib import Path
+
 """Test enhanced OHLC output and MT5 format with real extracted data."""
 
 import asyncio
-import json
 from datetime import datetime
-
+import json
 
 from dexscraper import DexScraper
 
@@ -165,8 +165,13 @@ async def test_enhanced_ohlc_output():
                 )
 
         # Save to file
-        with open("enhanced_ohlc_output.json", "w") as f:
-            json.dump(enhanced_output, f, indent=2, default=str)
+        def _write() -> None:
+            Path("enhanced_ohlc_output.json").write_text(
+                json.dumps(enhanced_output, indent=2, default=str),
+                encoding="utf-8",
+            )
+
+        await asyncio.to_thread(_write)
 
         print("Enhanced JSON output saved to: enhanced_ohlc_output.json")
         print(f"Records: {len(enhanced_output['ohlc_data'])}")
@@ -234,7 +239,7 @@ async def test_enhanced_streaming():
 
         print(f"✅ Streaming test complete: {extraction_count} extractions")
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"❌ Streaming test error: {e}")
 
 

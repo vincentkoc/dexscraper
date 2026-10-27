@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Tests for Cloudflare bypass session handling."""
 
 import time
@@ -18,14 +17,16 @@ class TestCloudflareBypass:
         scraper.cookies = {}
         scraper.headers = {"User-Agent": "ua-test"}
 
-        with patch.object(
-            CloudflareBypass, "_detect_cloudscraper_version", return_value="1.2.71"
-        ):
-            with patch(
+        with (
+            patch.object(
+                CloudflareBypass, "_detect_cloudscraper_version", return_value="1.2.71"
+            ),
+            patch(
                 "dexscraper.cloudflare_bypass.cloudscraper.create_scraper",
                 return_value=scraper,
-            ):
-                bypass = CloudflareBypass()
+            ),
+        ):
+            bypass = CloudflareBypass()
 
         warning = bypass.get_runtime_warning()
         assert warning is not None
@@ -39,14 +40,16 @@ class TestCloudflareBypass:
         scraper.cookies = {}
         scraper.headers = {"User-Agent": "ua-test"}
 
-        with patch.object(
-            CloudflareBypass, "_detect_cloudscraper_version", return_value="3.0.0"
-        ):
-            with patch(
+        with (
+            patch.object(
+                CloudflareBypass, "_detect_cloudscraper_version", return_value="3.0.0"
+            ),
+            patch(
                 "dexscraper.cloudflare_bypass.cloudscraper.create_scraper",
                 return_value=scraper,
-            ):
-                bypass = CloudflareBypass()
+            ),
+        ):
+            bypass = CloudflareBypass()
 
         assert bypass.get_runtime_warning() is None
         assert bypass.supports_v3 is True

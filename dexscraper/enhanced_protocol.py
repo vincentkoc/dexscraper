@@ -2,7 +2,6 @@
 
 import logging
 import struct
-from typing import Optional
 
 from .models import LiquidityData, PriceData, TradingPair, VolumeData
 
@@ -43,7 +42,17 @@ class EnhancedProtocolParser:
             logger.debug(f"Extracted {len(pairs)} trading pairs with real data")
             return pairs
 
-        except Exception as e:
+        except (
+            ValueError,
+            TypeError,
+            struct.error,
+            IndexError,
+            OverflowError,
+            UnicodeDecodeError,
+            KeyError,
+            OSError,
+            AttributeError,
+        ) as e:
             logger.error(f"Error parsing enhanced protocol message: {e}")
             return []
 
@@ -65,7 +74,17 @@ class EnhancedProtocolParser:
                 pair = self._parse_pair_from_cluster(data, cluster_start, cluster_data)
                 if pair:
                     pairs.append(pair)
-            except Exception as e:
+            except (
+                ValueError,
+                TypeError,
+                struct.error,
+                IndexError,
+                OverflowError,
+                UnicodeDecodeError,
+                KeyError,
+                OSError,
+                AttributeError,
+            ) as e:
                 logger.debug(f"Error parsing cluster at {cluster_start}: {e}")
                 continue
 
@@ -188,7 +207,7 @@ class EnhancedProtocolParser:
 
     def _parse_pair_from_cluster(
         self, full_data: bytes, cluster_start: int, cluster_data: dict
-    ) -> Optional[TradingPair]:
+    ) -> TradingPair | None:
         """Parse a trading pair from a numeric cluster."""
         try:
             # Extract basic token info from surrounding text
@@ -219,9 +238,12 @@ class EnhancedProtocolParser:
                 if 2 <= len(word) <= 10 and word.isupper() and word.isalpha():
                     if not token_symbol:
                         token_symbol = word
-                elif 3 <= len(word) <= 30 and not word.startswith("http"):
-                    if not token_name:
-                        token_name = word
+                elif (
+                    3 <= len(word) <= 30
+                    and not word.startswith("http")
+                    and not token_name
+                ):
+                    token_name = word
 
             # Build price data from cluster
             price_data = None
@@ -263,7 +285,17 @@ class EnhancedProtocolParser:
                 created_at=created_at,
             )
 
-        except Exception as e:
+        except (
+            ValueError,
+            TypeError,
+            struct.error,
+            IndexError,
+            OverflowError,
+            UnicodeDecodeError,
+            KeyError,
+            OSError,
+            AttributeError,
+        ) as e:
             logger.debug(f"Error creating pair from cluster: {e}")
             return None
 

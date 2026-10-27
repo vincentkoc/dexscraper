@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Test cases for CLI functionality."""
 
 import argparse
@@ -7,6 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from dexscraper.cli import (
+    SlickCLI,
     build_config_from_args,
     create_token_callback,
     emit_cloudflare_runtime_warning,
@@ -14,9 +14,8 @@ from dexscraper.cli import (
     parse_dex_list,
     parse_rank_by,
     parse_timeframe,
-    SlickCLI,
 )
-from dexscraper.config import Chain, DEX, RankBy, ScrapingConfig, Timeframe
+from dexscraper.config import DEX, Chain, RankBy, ScrapingConfig, Timeframe
 from dexscraper.models import ExtractedTokenBatch, TokenProfile
 
 
@@ -303,8 +302,8 @@ class TestCallbacks:
         batch = ExtractedTokenBatch(tokens=tokens)
 
         # Capture output
-        import io
         from contextlib import redirect_stdout
+        import io
 
         output_buffer = io.StringIO()
         with redirect_stdout(output_buffer):
@@ -327,8 +326,8 @@ class TestCallbacks:
         ]
         batch = ExtractedTokenBatch(tokens=tokens)
 
-        import io
         from contextlib import redirect_stdout
+        import io
 
         output_buffer = io.StringIO()
         with redirect_stdout(output_buffer):
@@ -348,8 +347,8 @@ class TestCallbacks:
         ]
         batch = ExtractedTokenBatch(tokens=tokens)
 
-        import io
         from contextlib import redirect_stdout
+        import io
 
         output_buffer = io.StringIO()
         with redirect_stdout(output_buffer):
@@ -418,21 +417,23 @@ class TestCLIIntegration:
         # Mock argv for testing
         test_args = ["dexscraper", "--once", "--format", "json"]
 
-        with patch("sys.argv", test_args):
-            with patch("dexscraper.cli.DexScraper") as mock_scraper_class:
-                mock_scraper = Mock()
-                mock_batch = ExtractedTokenBatch(
-                    tokens=[TokenProfile(symbol="TEST", price=0.001)]
-                )
-                mock_scraper.extract_token_data = AsyncMock(return_value=mock_batch)
-                mock_scraper_class.return_value = mock_scraper
+        with (
+            patch("sys.argv", test_args),
+            patch("dexscraper.cli.DexScraper") as mock_scraper_class,
+        ):
+            mock_scraper = Mock()
+            mock_batch = ExtractedTokenBatch(
+                tokens=[TokenProfile(symbol="TEST", price=0.001)]
+            )
+            mock_scraper.extract_token_data = AsyncMock(return_value=mock_batch)
+            mock_scraper_class.return_value = mock_scraper
 
-                with patch("builtins.print"):
-                    try:
-                        await main()
-                        mock_scraper.extract_token_data.assert_called_once()
-                    except SystemExit:
-                        pass  # CLI may exit normally
+            with patch("builtins.print"):
+                try:
+                    await main()
+                    mock_scraper.extract_token_data.assert_called_once()
+                except SystemExit:
+                    pass  # CLI may exit normally
 
     @pytest.mark.asyncio
     async def test_cli_main_cloudflare_bypass_flag(self):
@@ -441,24 +442,24 @@ class TestCLIIntegration:
 
         test_args = ["dexscraper", "--once", "--format", "json", "--cloudflare-bypass"]
 
-        with patch("sys.argv", test_args):
-            with patch("dexscraper.cli.DexScraper") as mock_scraper_class:
-                mock_scraper = Mock()
-                mock_batch = ExtractedTokenBatch(
-                    tokens=[TokenProfile(symbol="TEST", price=0.001)]
-                )
-                mock_scraper.extract_token_data = AsyncMock(return_value=mock_batch)
-                mock_scraper_class.return_value = mock_scraper
+        with (
+            patch("sys.argv", test_args),
+            patch("dexscraper.cli.DexScraper") as mock_scraper_class,
+        ):
+            mock_scraper = Mock()
+            mock_batch = ExtractedTokenBatch(
+                tokens=[TokenProfile(symbol="TEST", price=0.001)]
+            )
+            mock_scraper.extract_token_data = AsyncMock(return_value=mock_batch)
+            mock_scraper_class.return_value = mock_scraper
 
-                with patch("builtins.print"):
-                    try:
-                        await main()
-                    except SystemExit:
-                        pass
+            with patch("builtins.print"):
+                try:
+                    await main()
+                except SystemExit:
+                    pass
 
-                assert (
-                    mock_scraper_class.call_args.kwargs["use_cloudflare_bypass"] is True
-                )
+            assert mock_scraper_class.call_args.kwargs["use_cloudflare_bypass"] is True
 
     @pytest.mark.asyncio
     async def test_cli_argument_parsing(self):
@@ -477,21 +478,23 @@ class TestCLIIntegration:
         for test_args in test_cases:
             full_args = ["dexscraper", "--once"] + test_args
 
-            with patch("sys.argv", full_args):
-                with patch("dexscraper.cli.DexScraper") as mock_scraper_class:
-                    mock_scraper = Mock()
-                    mock_scraper.extract_token_data = AsyncMock(
-                        return_value=ExtractedTokenBatch(
-                            tokens=[TokenProfile(symbol="TEST", price=0.001)]
-                        )
+            with (
+                patch("sys.argv", full_args),
+                patch("dexscraper.cli.DexScraper") as mock_scraper_class,
+            ):
+                mock_scraper = Mock()
+                mock_scraper.extract_token_data = AsyncMock(
+                    return_value=ExtractedTokenBatch(
+                        tokens=[TokenProfile(symbol="TEST", price=0.001)]
                     )
-                    mock_scraper_class.return_value = mock_scraper
-                    try:
-                        # This tests that argument parsing doesn't fail
-                        await main()
-                    except (SystemExit, Exception):
-                        # Some arguments might cause early exits, that's OK
-                        pass
+                )
+                mock_scraper_class.return_value = mock_scraper
+                try:
+                    # This tests that argument parsing doesn't fail
+                    await main()
+                except SystemExit:
+                    # argparse may exit early for some argument combinations
+                    pass
 
 
 if __name__ == "__main__":

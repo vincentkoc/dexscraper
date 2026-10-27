@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
 """Test cases for dexscraper models and data export functionality."""
 
-import time
 from datetime import datetime
+import time
 
 import pytest
 

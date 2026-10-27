@@ -1,9 +1,9 @@
 """Binary protocol decoder for DexScreener WebSocket messages."""
 
-import logging
-import struct
 from datetime import datetime
-from typing import Optional
+import logging
+import math
+import struct
 
 from .models import LiquidityData, PriceData, TradingPair, VolumeData
 
@@ -13,10 +13,20 @@ logger = logging.getLogger(__name__)
 def handle_double(value: float) -> float:
     """Handle potential NaN/Inf values."""
     try:
-        if not isinstance(value, float) or value != value or abs(value) == float("inf"):
+        if not isinstance(value, float) or math.isnan(value) or math.isinf(value):
             return 0.0
         return value
-    except Exception:
+    except (
+        ValueError,
+        TypeError,
+        struct.error,
+        IndexError,
+        OverflowError,
+        UnicodeDecodeError,
+        KeyError,
+        OSError,
+        AttributeError,
+    ):
         return 0.0
 
 
@@ -35,7 +45,17 @@ def clean_string(s: str) -> str:
             return cleaned.split("@")[0].split("\\")[0]
 
         return cleaned.strip()
-    except Exception:
+    except (
+        ValueError,
+        TypeError,
+        struct.error,
+        IndexError,
+        OverflowError,
+        UnicodeDecodeError,
+        KeyError,
+        OSError,
+        AttributeError,
+    ):
         return ""
 
 
@@ -67,12 +87,22 @@ def decode_metrics(data: bytes, start_pos: int) -> tuple[dict[str, float], int]:
 
         return metrics, start_pos + 64
 
-    except Exception as e:
+    except (
+        ValueError,
+        TypeError,
+        struct.error,
+        IndexError,
+        OverflowError,
+        UnicodeDecodeError,
+        KeyError,
+        OSError,
+        AttributeError,
+    ) as e:
         logger.debug(f"Error decoding metrics: {e}")
         return {}, start_pos
 
 
-def decode_pair(data: bytes) -> Optional[TradingPair]:
+def decode_pair(data: bytes) -> TradingPair | None:
     """Decode a single trading pair from binary data."""
     try:
         # First try the original binary parsing approach
@@ -127,8 +157,18 @@ def decode_pair(data: bytes) -> Optional[TradingPair]:
                     )
                     if value and len(value) >= 2:  # Only accept reasonable values
                         pair_data[field] = value
-                except Exception:  # nosec B110
-                    pass
+                except (
+                    ValueError,
+                    TypeError,
+                    struct.error,
+                    IndexError,
+                    OverflowError,
+                    UnicodeDecodeError,
+                    KeyError,
+                    OSError,
+                    AttributeError,
+                ):
+                    pass  # best-effort optional string field
             pos += str_len
 
         # Align to 8-byte boundary for doubles
@@ -166,7 +206,17 @@ def decode_pair(data: bytes) -> Optional[TradingPair]:
                 created_at_formatted = datetime.fromtimestamp(created_at).strftime(
                     "%Y-%m-%d %H:%M:%S"
                 )
-            except Exception:
+            except (
+                ValueError,
+                TypeError,
+                struct.error,
+                IndexError,
+                OverflowError,
+                UnicodeDecodeError,
+                KeyError,
+                OSError,
+                AttributeError,
+            ):
                 created_at_formatted = "1970-01-01 00:00:00"
 
         # Create TradingPair object
@@ -195,12 +245,22 @@ def decode_pair(data: bytes) -> Optional[TradingPair]:
 
         return None
 
-    except Exception as e:
+    except (
+        ValueError,
+        TypeError,
+        struct.error,
+        IndexError,
+        OverflowError,
+        UnicodeDecodeError,
+        KeyError,
+        OSError,
+        AttributeError,
+    ) as e:
         logger.debug(f"Error decoding pair: {e}")
         return None
 
 
-def decode_pair_from_text(data: bytes) -> Optional[TradingPair]:
+def decode_pair_from_text(data: bytes) -> TradingPair | None:
     """Decode a trading pair using text-based extraction similar to MostafaRoohy's approach."""
     try:
         # Extract printable text
@@ -253,15 +313,13 @@ def decode_pair_from_text(data: bytes) -> Optional[TradingPair]:
                 3 <= len(word_clean) <= 50
                 and not word_clean.isnumeric()
                 and not word_clean.startswith("http")
+                and (not token_name or len(word_clean) > len(token_name))
+                and not any(
+                    skip in word_clean.lower()
+                    for skip in ["twitter", "telegram", "website", "pump", "sol"]
+                )
             ):
-                # Prefer longer, more descriptive names
-                if not token_name or len(word_clean) > len(token_name):
-                    # Avoid obvious non-names
-                    if not any(
-                        skip in word_clean.lower()
-                        for skip in ["twitter", "telegram", "website", "pump", "sol"]
-                    ):
-                        token_name = word_clean
+                token_name = word_clean
 
         # Only create pair if we have some meaningful data
         if token_name or token_symbol or (token_address and len(token_address) >= 32):
@@ -276,7 +334,17 @@ def decode_pair_from_text(data: bytes) -> Optional[TradingPair]:
 
         return None
 
-    except Exception as e:
+    except (
+        ValueError,
+        TypeError,
+        struct.error,
+        IndexError,
+        OverflowError,
+        UnicodeDecodeError,
+        KeyError,
+        OSError,
+        AttributeError,
+    ) as e:
         logger.debug(f"Error in text-based pair decoding: {e}")
         return None
 
@@ -333,9 +401,12 @@ def parse_variable_length(data: bytes) -> list[TradingPair]:
                 elif word.isupper() and 2 <= len(word) <= 10 and word.isalpha():
                     token_symbol = word
                 # Potential token names (mixed case, reasonable length)
-                elif 3 <= len(word) <= 50 and not word.isnumeric():
-                    if not token_name or len(word) > len(token_name):
-                        token_name = word
+                elif (
+                    3 <= len(word) <= 50
+                    and not word.isnumeric()
+                    and (not token_name or len(word) > len(token_name))
+                ):
+                    token_name = word
 
             # Create a trading pair if we have enough data
             if token_name or token_symbol or token_address:
@@ -352,7 +423,17 @@ def parse_variable_length(data: bytes) -> list[TradingPair]:
                 if len(pairs) >= 50:  # Limit to prevent too many results
                     break
 
-    except Exception as e:
+    except (
+        ValueError,
+        TypeError,
+        struct.error,
+        IndexError,
+        OverflowError,
+        UnicodeDecodeError,
+        KeyError,
+        OSError,
+        AttributeError,
+    ) as e:
         logger.debug(f"Error in variable-length parsing: {e}")
 
     logger.debug(f"Variable-length parser extracted {len(pairs)} pairs")
@@ -374,7 +455,17 @@ def parse_message(message: bytes) -> list[TradingPair]:
                 return pairs
         except ImportError:
             logger.debug("Enhanced parser not available, using fallback")
-        except Exception as e:
+        except (
+            ValueError,
+            TypeError,
+            struct.error,
+            IndexError,
+            OverflowError,
+            UnicodeDecodeError,
+            KeyError,
+            OSError,
+            AttributeError,
+        ) as e:
             logger.debug(f"Enhanced parser failed: {e}, falling back to basic parsing")
 
         # Original parsing logic as fallback
@@ -423,6 +514,16 @@ def parse_message(message: bytes) -> list[TradingPair]:
 
         return pairs
 
-    except Exception as e:
+    except (
+        ValueError,
+        TypeError,
+        struct.error,
+        IndexError,
+        OverflowError,
+        UnicodeDecodeError,
+        KeyError,
+        OSError,
+        AttributeError,
+    ) as e:
         logger.debug(f"Error parsing message: {e}")
         return []

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Test cases for DexScraper main functionality."""
 
 from unittest.mock import AsyncMock, Mock, patch
@@ -560,7 +559,7 @@ class TestDexScraperIntegration:
                     assert ohlc.close >= 0
                     assert ohlc.volume >= 0
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             pytest.skip(f"Network test failed: {e}")
 
     @pytest.mark.asyncio
@@ -581,7 +580,7 @@ class TestDexScraperIntegration:
                 assert isinstance(batch, ExtractedTokenBatch)
                 # Each config should potentially return different results
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 pytest.skip(f"Configuration test failed for {config}: {e}")
 
     @pytest.mark.asyncio
@@ -609,7 +608,7 @@ class TestDexScraperIntegration:
                 trading_pairs = batch.to_trading_pairs()
                 assert len(trading_pairs) == len(batch.tokens)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             pytest.skip(f"Export test failed: {e}")
 
 

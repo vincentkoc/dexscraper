@@ -1,9 +1,11 @@
 """DexScreener WebSocket scraper package for real-time cryptocurrency data."""
 
-from importlib.metadata import PackageNotFoundError, version as package_version
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
+
 from .config import (
-    Chain,
     DEX,
+    Chain,
     Filters,
     Order,
     PresetConfigs,
@@ -31,8 +33,9 @@ def _resolve_version() -> str:
         try:
             from setuptools_scm import get_version
 
-            return get_version(root="..", relative_to=__file__)
-        except Exception:
+            version = get_version(root="..", relative_to=__file__)
+            return str(version)
+        except (ImportError, PackageNotFoundError, OSError):
             return "0.0.0"
 
 
@@ -40,20 +43,20 @@ __version__ = _resolve_version()
 __author__ = "Vincent Koc"
 
 __all__ = [
-    "DexScraper",
-    "TradingPair",
-    "PriceData",
-    "LiquidityData",
-    "VolumeData",
-    "OHLCData",
-    "TokenProfile",
-    "ExtractedTokenBatch",
-    "ScrapingConfig",
-    "PresetConfigs",
-    "Chain",
-    "Timeframe",
-    "RankBy",
-    "Order",
     "DEX",
+    "Chain",
+    "DexScraper",
+    "ExtractedTokenBatch",
     "Filters",
+    "LiquidityData",
+    "OHLCData",
+    "Order",
+    "PresetConfigs",
+    "PriceData",
+    "RankBy",
+    "ScrapingConfig",
+    "Timeframe",
+    "TokenProfile",
+    "TradingPair",
+    "VolumeData",
 ]

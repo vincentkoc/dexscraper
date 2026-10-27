@@ -1,23 +1,25 @@
 """DexScreener WebSocket scraper with validated binary protocol extraction."""
 
 import asyncio
+from collections.abc import Callable
 import inspect
 import json
 import logging
+import math
 import os
 import random
 import re
 import ssl
 import struct
 import time
-from typing import Any, Callable, Optional, Union
+from typing import Any
 
 import websockets
 
 try:
     from websockets.asyncio.client import ClientConnection as WebSocketConnection
-except Exception:  # pragma: no cover - fallback for older websockets layouts
-    WebSocketConnection = Any
+except ImportError:  # pragma: no cover - fallback for older websockets layouts
+    WebSocketConnection = Any  # type: ignore[misc,assignment]
 
 from .cloudflare_bypass import CloudflareBypass
 from .config import PresetConfigs, ScrapingConfig
@@ -46,7 +48,7 @@ class DexScraper:
         max_retries: int = 5,
         backoff_base: float = 1.0,
         use_cloudflare_bypass: bool = False,
-        config: Optional[ScrapingConfig] = None,
+        config: ScrapingConfig | None = None,
     ) -> None:
         """Initialize the enhanced scraper.
 
@@ -116,7 +118,7 @@ class DexScraper:
         self.address_pattern = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
         self.url_pattern = re.compile(r'https?://[^\s<>"]{2,}')
 
-    def get_cloudflare_runtime_warning(self) -> Optional[str]:
+    def get_cloudflare_runtime_warning(self) -> str | None:
         """Return actionable warning when Cloudflare bypass runs in compatibility mode."""
         if not self.cf_bypass:
             return None
@@ -159,7 +161,7 @@ class DexScraper:
         jitter = delay * 0.25 * (2 * random.random() - 1)  # nosec B311
         return float(delay + jitter)
 
-    def _resolve_proxy_override(self) -> Optional[Union[str, bool]]:
+    def _resolve_proxy_override(self) -> str | bool | None:
         """Resolve optional proxy override from DEXSCRAPER_PROXY environment variable."""
         raw_value = os.environ.get("DEXSCRAPER_PROXY")
         if raw_value is None:
@@ -174,7 +176,7 @@ class DexScraper:
 
         return value
 
-    async def _connect(self) -> Optional[WebSocketConnection]:
+    async def _connect(self) -> WebSocketConnection | None:
         """Establish WebSocket connection with retry logic."""
         uri = self.config.build_websocket_url()
         logger.debug(f"Connecting to: {uri}")
@@ -234,7 +236,7 @@ class DexScraper:
                 logger.info("WebSocket connection established")
                 return websocket
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - retry any connect/handshake failure
                 self._retry_count = attempt + 1
                 logger.error(f"Connection attempt {attempt + 1} failed: {e}")
 
@@ -259,8 +261,11 @@ class DexScraper:
             handshake = await websocket.recv()
             logger.debug(f"Handshake: {len(handshake)} bytes")
 
-            # Get pairs data message
-            pairs_message = await websocket.recv()
+            # Get pairs data message (normalize to bytes for binary protocol parsing)
+            pairs_raw = await websocket.recv()
+            pairs_message = (
+                pairs_raw.encode("utf-8") if isinstance(pairs_raw, str) else pairs_raw
+            )
             logger.debug(f"Pairs message: {len(pairs_message)} bytes")
 
             # Navigate to data section using validated approach
@@ -282,7 +287,7 @@ class DexScraper:
             logger.info(f"Successfully extracted {len(tokens)} complete token profiles")
             return ExtractedTokenBatch(tokens=tokens)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - preserve stream/extract resilience
             logger.error(f"Error during extraction: {e}")
             return ExtractedTokenBatch()
         finally:
@@ -586,7 +591,7 @@ class DexScraper:
 
     def _extract_validated_token_record(
         self, token_name: str, record_data: bytes, position: int
-    ) -> Optional[TokenProfile]:
+    ) -> TokenProfile | None:
         """Extract complete token record using exact logic from working deep analyzer."""
         fields = {}
 
@@ -612,7 +617,16 @@ class DexScraper:
                         fields["txns_24h"] = int(val)
                     elif "makers" not in fields:
                         fields["makers"] = int(val)
-            except Exception:  # nosec B112
+            except (
+                ValueError,
+                TypeError,
+                struct.error,
+                IndexError,
+                OverflowError,
+                UnicodeDecodeError,
+                KeyError,
+                OSError,
+            ):
                 continue
 
         # Also try float extraction (as deep analyzer does)
@@ -635,7 +649,16 @@ class DexScraper:
                         fields["txns_24h"] = int(val)
                     elif "makers" not in fields:
                         fields["makers"] = int(val)
-            except Exception:  # nosec B112
+            except (
+                ValueError,
+                TypeError,
+                struct.error,
+                IndexError,
+                OverflowError,
+                UnicodeDecodeError,
+                KeyError,
+                OSError,
+            ):
                 continue
 
         # CRITICAL: Also extract uint32 integers for transaction counts (as deep analyzer finds)
@@ -649,7 +672,16 @@ class DexScraper:
                 # Maker counts: 10 to 1000 range
                 elif 10 <= val <= 1000 and "makers" not in fields:
                     fields["makers"] = val
-            except Exception:  # nosec B112
+            except (
+                ValueError,
+                TypeError,
+                struct.error,
+                IndexError,
+                OverflowError,
+                UnicodeDecodeError,
+                KeyError,
+                OSError,
+            ):
                 continue
 
         # Return token with at least 3 fields (as deep analyzer does)
@@ -716,7 +748,16 @@ class DexScraper:
                 val = struct.unpack("<d", window[i : i + 8])[0]
                 if self._is_valid_numeric_value(val):
                     values.append((base_offset + i, val, "double"))
-            except Exception:  # nosec B112
+            except (
+                ValueError,
+                TypeError,
+                struct.error,
+                IndexError,
+                OverflowError,
+                UnicodeDecodeError,
+                KeyError,
+                OSError,
+            ):
                 continue
 
         # Extract floats (4-byte IEEE 754)
@@ -729,7 +770,16 @@ class DexScraper:
                 val = struct.unpack("<f", window[i : i + 4])[0]
                 if self._is_valid_numeric_value(val):
                     values.append((base_offset + i, val, "float"))
-            except Exception:  # nosec B112
+            except (
+                ValueError,
+                TypeError,
+                struct.error,
+                IndexError,
+                OverflowError,
+                UnicodeDecodeError,
+                KeyError,
+                OSError,
+            ):
                 continue
 
         # Extract 32-bit integers (counts)
@@ -746,7 +796,16 @@ class DexScraper:
                     <= self.value_ranges["makers"][1]
                 ):
                     values.append((base_offset + i, float(val), "uint32"))
-            except Exception:  # nosec B112
+            except (
+                ValueError,
+                TypeError,
+                struct.error,
+                IndexError,
+                OverflowError,
+                UnicodeDecodeError,
+                KeyError,
+                OSError,
+            ):
                 continue
 
         # Sort by position and remove overlaps
@@ -756,11 +815,10 @@ class DexScraper:
     def _is_valid_numeric_value(self, val: float) -> bool:
         """Validate numeric value using established ranges."""
         return (
-            not (val != val)
-            and val != float("inf")  # Not NaN
-            and val != float("-inf")  # Not infinity
-            and abs(val) > 1e-10  # Not negative infinity
-            and abs(val) < 1e12  # Not too close to zero  # Not absurdly large
+            not math.isnan(val)
+            and not math.isinf(val)
+            and abs(val) > 1e-10
+            and abs(val) < 1e12
         )
 
     def _classify_numeric_values(
@@ -1481,7 +1539,7 @@ class DexScraper:
         return profile
 
     # Legacy compatibility methods
-    async def get_pairs_once(self) -> Optional[list[TradingPair]]:
+    async def get_pairs_once(self) -> list[TradingPair] | None:
         """Get pairs using enhanced extraction, return as legacy format."""
         batch = await self.extract_token_data()
         if batch.tokens:
@@ -1490,9 +1548,8 @@ class DexScraper:
 
     async def stream_pairs(
         self,
-        callback: Optional[
-            Callable[[Union[list[TradingPair], ExtractedTokenBatch]], None]
-        ] = None,
+        callback: Callable[[list[TradingPair] | ExtractedTokenBatch], None]
+        | None = None,
         output_format: str = "json",
         use_enhanced_extraction: bool = True,
     ) -> None:
@@ -1519,7 +1576,7 @@ class DexScraper:
             except KeyboardInterrupt:
                 logger.info("Streaming stopped by user")
                 break
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - preserve stream/extract resilience
                 logger.error(f"Error in streaming: {e}")
                 await asyncio.sleep(10)
 
@@ -1587,5 +1644,5 @@ class DexScraper:
             )
         except KeyboardInterrupt:
             logger.info("Enhanced scraper stopped by user")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - preserve stream/extract resilience
             logger.error(f"Enhanced scraper error: {e}")
