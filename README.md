@@ -9,12 +9,20 @@
   <a href="https://pypi.org/project/dexscraper"><img src="https://badge.fury.io/py/dexscraper.svg" alt="PyPI"></a>
   <a href="https://github.com/vincentkoc/dexscraper/releases"><img src="https://img.shields.io/github/v/release/vincentkoc/dexscraper?include_prereleases" alt="Release"></a>
   <a href="https://github.com/vincentkoc/dexscraper/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vincentkoc/dexscraper" alt="License"></a>
-  <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python">
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python">
 </p>
 
 > [!IMPORTANT]
 > This project is independent and not affiliated with DexScreener.<br>
 > Use at your own risk for research purposes only and comply with DexScreener terms.
+
+> [!WARNING]
+> The unofficial DexScreener screener WebSocket endpoints under
+> `wss://io.dexscreener.com/dex/screener/...` now return **404** and are
+> treated as dead. Prefer the [official DexScreener API](https://docs.dexscreener.com/api/reference)
+> (`https://api.dexscreener.com/...`) for supported market data access.
+> Streaming via this package's historical `io.dexscreener.com` WebSocket
+> path is not currently available.
 
 ## Install Dexscraper
 
