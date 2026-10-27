@@ -1,11 +1,10 @@
-#!/usr/bin/env python3
 """Test cases for dexscraper configuration and URL building."""
 
 import pytest
 
 from dexscraper.config import (
-    Chain,
     DEX,
+    Chain,
     Filters,
     Order,
     PresetConfigs,

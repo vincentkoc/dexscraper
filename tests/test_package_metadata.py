@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Package metadata tests."""
 
 import dexscraper

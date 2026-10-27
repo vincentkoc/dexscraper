@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
 """Pytest configuration and fixtures for dexscraper tests."""
 
 import asyncio
-import os
 from collections.abc import Generator
+import os
 
 import pytest
 
@@ -32,9 +31,7 @@ def pytest_collection_modifyitems(
     """Skip live/integration WebSocket tests unless DEXSCRAPER_LIVE is set."""
     if _live_network_enabled():
         return
-    skip_live = pytest.mark.skip(
-        reason="live network tests require DEXSCRAPER_LIVE=1"
-    )
+    skip_live = pytest.mark.skip(reason="live network tests require DEXSCRAPER_LIVE=1")
     for item in items:
         if "integration" in item.keywords or "live" in item.keywords:
             item.add_marker(skip_live)

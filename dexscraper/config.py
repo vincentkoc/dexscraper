@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 class Chain(Enum):
@@ -84,52 +83,52 @@ class Filters:
     dex_ids: list[DEX] = field(default_factory=list)
 
     # Liquidity filters
-    liquidity_min: Optional[int] = None
-    liquidity_max: Optional[int] = None
+    liquidity_min: int | None = None
+    liquidity_max: int | None = None
 
     # Volume filters
-    volume_h24_min: Optional[int] = None
-    volume_h24_max: Optional[int] = None
-    volume_h6_min: Optional[int] = None
-    volume_h6_max: Optional[int] = None
-    volume_h1_min: Optional[int] = None
-    volume_h1_max: Optional[int] = None
+    volume_h24_min: int | None = None
+    volume_h24_max: int | None = None
+    volume_h6_min: int | None = None
+    volume_h6_max: int | None = None
+    volume_h1_min: int | None = None
+    volume_h1_max: int | None = None
 
     # Transaction filters
-    txns_h24_min: Optional[int] = None
-    txns_h24_max: Optional[int] = None
-    txns_h6_min: Optional[int] = None
-    txns_h6_max: Optional[int] = None
-    txns_h1_min: Optional[int] = None
-    txns_h1_max: Optional[int] = None
+    txns_h24_min: int | None = None
+    txns_h24_max: int | None = None
+    txns_h6_min: int | None = None
+    txns_h6_max: int | None = None
+    txns_h1_min: int | None = None
+    txns_h1_max: int | None = None
 
     # Age filters
-    pair_age_min: Optional[int] = None  # hours
-    pair_age_max: Optional[int] = None  # hours
+    pair_age_min: int | None = None  # hours
+    pair_age_max: int | None = None  # hours
 
     # Price change filters
-    price_change_h24_min: Optional[float] = None
-    price_change_h24_max: Optional[float] = None
-    price_change_h6_min: Optional[float] = None
-    price_change_h6_max: Optional[float] = None
-    price_change_h1_min: Optional[float] = None
-    price_change_h1_max: Optional[float] = None
+    price_change_h24_min: float | None = None
+    price_change_h24_max: float | None = None
+    price_change_h6_min: float | None = None
+    price_change_h6_max: float | None = None
+    price_change_h1_min: float | None = None
+    price_change_h1_max: float | None = None
 
     # Market cap / FDV filters
-    fdv_min: Optional[int] = None
-    fdv_max: Optional[int] = None
-    market_cap_min: Optional[int] = None
-    market_cap_max: Optional[int] = None
+    fdv_min: int | None = None
+    fdv_max: int | None = None
+    market_cap_min: int | None = None
+    market_cap_max: int | None = None
 
     # Enhanced features
     enhanced_token_info: bool = False
-    active_boosts_min: Optional[int] = None
-    recent_purchased_impressions_min: Optional[int] = None
+    active_boosts_min: int | None = None
+    recent_purchased_impressions_min: int | None = None
 
     # Pumpfun specific filters
-    max_age: Optional[int] = None  # hours
-    profile: Optional[int] = None  # Include profile data (0 or 1)
-    max_launchpad_progress: Optional[float] = None  # Max launchpad progress %
+    max_age: int | None = None  # hours
+    profile: int | None = None  # Include profile data (0 or 1)
+    max_launchpad_progress: float | None = None  # Max launchpad progress %
 
     def to_query_params(self) -> dict[str, str]:
         """Convert filters to WebSocket query parameters."""

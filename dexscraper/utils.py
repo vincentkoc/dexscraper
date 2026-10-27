@@ -1,19 +1,19 @@
 """Utility functions for dexscraper package."""
 
 import asyncio
+from collections.abc import Awaitable
+from datetime import datetime, timezone
 import hashlib
 import re
 import struct
 import time
-from datetime import datetime, timezone
-from typing import Any, Optional, TypeVar
-from collections.abc import Awaitable
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
 
 def extract_floats_from_bytes(
-    data: bytes, offset: int = 0, count: Optional[int] = None
+    data: bytes, offset: int = 0, count: int | None = None
 ) -> list[float]:
     """Extract IEEE 754 single-precision floats from binary data.
 
@@ -48,7 +48,7 @@ def extract_floats_from_bytes(
 
 
 def extract_doubles_from_bytes(
-    data: bytes, offset: int = 0, count: Optional[int] = None
+    data: bytes, offset: int = 0, count: int | None = None
 ) -> list[float]:
     """Extract IEEE 754 double-precision floats from binary data.
 
@@ -102,10 +102,7 @@ def is_valid_float(value: float) -> bool:
         return False
 
     # Check for suspicious patterns (like uninitialized memory)
-    if value == 0.0 or abs(value) == 1.0:
-        return False
-
-    return True
+    return not (value == 0.0 or abs(value) == 1.0)
 
 
 def extract_solana_addresses(data: bytes) -> list[str]:
@@ -205,10 +202,7 @@ def is_valid_url(url: str) -> bool:
         return False
 
     # Should not contain binary garbage patterns
-    if any(char in url for char in "\x00\x01\x02\x03\x04\x05"):
-        return False
-
-    return True
+    return not any(char in url for char in "\x00\x01\x02\x03\x04\x05")
 
 
 def cluster_numeric_values(
@@ -286,7 +280,7 @@ def calculate_confidence_score(
     return min(total_score, 1.0)
 
 
-def format_timestamp(timestamp: Optional[int] = None) -> str:
+def format_timestamp(timestamp: int | None = None) -> str:
     """Format timestamp for display.
 
     Args:
@@ -302,7 +296,7 @@ def format_timestamp(timestamp: Optional[int] = None) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
-def format_number(value: Optional[float], precision: int = 8) -> str:
+def format_number(value: float | None, precision: int = 8) -> str:
     """Format numeric value for display.
 
     Args:
@@ -321,7 +315,7 @@ def format_number(value: Optional[float], precision: int = 8) -> str:
         return f"{value:.{precision}f}".rstrip("0").rstrip(".")
 
 
-def format_percentage(value: Optional[float]) -> str:
+def format_percentage(value: float | None) -> str:
     """Format percentage value for display.
 
     Args:
@@ -336,7 +330,7 @@ def format_percentage(value: Optional[float]) -> str:
     return f"{value:.1%}"
 
 
-def format_volume(value: Optional[float]) -> str:
+def format_volume(value: float | None) -> str:
     """Format volume/market cap value for display.
 
     Args:
@@ -442,7 +436,7 @@ def exponential_backoff(
     return float(min(delay, max_delay))
 
 
-def validate_trading_data(price: Optional[float], volume: Optional[float]) -> bool:
+def validate_trading_data(price: float | None, volume: float | None) -> bool:
     """Validate trading data for reasonableness.
 
     Args:

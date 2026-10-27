@@ -1,10 +1,13 @@
 """Centralized logging configuration for dexscraper."""
 
+from collections.abc import Callable
+from datetime import datetime
 import logging
 import sys
-from datetime import datetime
 from types import TracebackType
-from typing import Any, Callable, Optional
+from typing import Any, Optional, cast
+
+from typing_extensions import Self
 
 
 class DexScraperLogger:
@@ -13,10 +16,10 @@ class DexScraperLogger:
     _instance: Optional["DexScraperLogger"] = None
     _initialized: bool = False
 
-    def __new__(cls) -> "DexScraperLogger":
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-        return cls._instance
+        return cast(Self, cls._instance)
 
     def __init__(self) -> None:
         self.logger: logging.Logger = logging.getLogger("dexscraper")
@@ -119,19 +122,19 @@ class LogContext:
 
     def __init__(self, level: int) -> None:
         self.level = level
-        self.original_level: Optional[int] = None
+        self.original_level: int | None = None
         self.logger_instance = DexScraperLogger()
 
-    def __enter__(self) -> "LogContext":
+    def __enter__(self) -> Self:
         self.original_level = self.logger_instance.logger.level
         self.logger_instance.set_level(self.level)
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         if self.original_level is not None:
             self.logger_instance.set_level(self.original_level)
@@ -143,18 +146,18 @@ class PerformanceLogger:
     def __init__(self, operation_name: str) -> None:
         self.operation_name = operation_name
         self.logger = get_logger()
-        self.start_time: Optional[datetime] = None
+        self.start_time: datetime | None = None
 
-    def __enter__(self) -> "PerformanceLogger":
+    def __enter__(self) -> Self:
         self.start_time = datetime.now()
         self.logger.debug(f"Starting {self.operation_name}")
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         if self.start_time:
             duration = datetime.now() - self.start_time

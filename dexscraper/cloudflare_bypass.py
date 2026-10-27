@@ -1,11 +1,12 @@
 """Cloudflare bypass utilities using cloudscraper."""
 
 import asyncio
-from importlib.metadata import PackageNotFoundError, version as package_version
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
 import logging
 import re
 import time
-from typing import Any, Optional
+from typing import Any
 
 import cloudscraper
 
@@ -43,7 +44,7 @@ class CloudflareBypass:
         except PackageNotFoundError:
             return "unknown"
 
-    def get_runtime_warning(self) -> Optional[str]:
+    def get_runtime_warning(self) -> str | None:
         """Return compatibility warning for older cloudscraper versions."""
         if self.supports_v3:
             return None
@@ -69,12 +70,22 @@ class CloudflareBypass:
         self._last_session_update = 0.0
         try:
             self.scraper.cookies.clear()
-        except Exception as exc:
+        except (
+            ValueError,
+            TypeError,
+            IndexError,
+            OverflowError,
+            UnicodeDecodeError,
+            KeyError,
+            OSError,
+            AttributeError,
+            RuntimeError,
+        ) as exc:
             # Cookie jar type can vary; best effort only.
             logger.debug("Failed to clear cookies during session refresh: %s", exc)
         self.scraper = self._create_scraper()
 
-    async def _fetch_main_site(self, main_site_url: str) -> Optional[Any]:
+    async def _fetch_main_site(self, main_site_url: str) -> Any | None:
         """Run the blocking cloudscraper request in an executor."""
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._make_request, main_site_url)
@@ -108,7 +119,7 @@ class CloudflareBypass:
 
             # Make a request to the main site to get past Cloudflare
             response = await self._fetch_main_site(main_site_url)
-            status_code: Optional[int] = (
+            status_code: int | None = (
                 response.status_code if response is not None else None
             )
 
@@ -132,17 +143,37 @@ class CloudflareBypass:
                 return self._store_session_cookies()
 
             logger.warning("Retry failed to get session: HTTP %s", retry_status)
-        except Exception as e:
+        except (
+            ValueError,
+            TypeError,
+            IndexError,
+            OverflowError,
+            UnicodeDecodeError,
+            KeyError,
+            OSError,
+            AttributeError,
+            RuntimeError,
+        ) as e:
             logger.error("Error getting session cookies: %s", e)
 
         return {}
 
-    def _make_request(self, url: str) -> Optional[Any]:
+    def _make_request(self, url: str) -> Any | None:
         """Make synchronous request using cloudscraper."""
         try:
             response = self.scraper.get(url, timeout=30)
             return response
-        except Exception as e:
+        except (
+            ValueError,
+            TypeError,
+            IndexError,
+            OverflowError,
+            UnicodeDecodeError,
+            KeyError,
+            OSError,
+            AttributeError,
+            RuntimeError,
+        ) as e:
             logger.debug("Request failed: %s", e)
             return None
 

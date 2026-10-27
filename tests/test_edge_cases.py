@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Test edge cases and scenarios identified in ANALYSIS.md."""
 
 import asyncio
@@ -374,7 +373,7 @@ class TestWebSocketEdgeCases:
                 result = scraper._extract_metadata_patterns(msg, 0)
                 # Should return empty dict or handle gracefully
                 assert isinstance(result, dict)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 # Should handle errors gracefully (index errors, struct errors, etc.)
                 assert any(
                     word in str(e).lower()

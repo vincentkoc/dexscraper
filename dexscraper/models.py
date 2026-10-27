@@ -1,11 +1,11 @@
 """Data models for DexScreener trading pairs and market data."""
 
-import json
-import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from io import StringIO
-from typing import Any, Optional, Union
+import json
+import time
+from typing import Any
 
 
 @dataclass
@@ -14,7 +14,7 @@ class PriceData:
 
     current: float
     usd: float
-    change_24h: Optional[float] = None
+    change_24h: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -56,7 +56,7 @@ class OHLCData:
     low: float
     close: float
     volume: float
-    trades: Optional[int] = None  # Number of trades (T in OHLCVT)
+    trades: int | None = None  # Number of trades (T in OHLCVT)
 
     def to_mt5_format(self) -> str:
         """Format for MetaTrader 5 import."""
@@ -100,12 +100,12 @@ class TradingPair:
     base_token_name: str
     base_token_symbol: str
     base_token_address: str
-    price_data: Optional[PriceData] = None
-    liquidity_data: Optional[LiquidityData] = None
-    volume_data: Optional[VolumeData] = None
-    fdv: Optional[float] = None
-    created_at: Optional[int] = None
-    created_at_formatted: Optional[str] = None
+    price_data: PriceData | None = None
+    liquidity_data: LiquidityData | None = None
+    volume_data: VolumeData | None = None
+    fdv: float | None = None
+    created_at: int | None = None
+    created_at_formatted: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format matching original output."""
@@ -142,7 +142,7 @@ class TradingPair:
         """Convert to JSON string."""
         return json.dumps(self.to_dict())
 
-    def to_ohlc(self, timeframe: str = "1m") -> Optional[OHLCData]:
+    def to_ohlc(self, timeframe: str = "1m") -> OHLCData | None:
         """Convert current price data to OHLC format for MetaTrader."""
         # Use real data from binary protocol extraction
         if self.price_data and self.volume_data and self.created_at:
@@ -170,44 +170,44 @@ class TokenProfile:
     """Complete token profile extracted from binary protocol with all metadata."""
 
     # Core Trading Data (from binary extraction)
-    price: Optional[float] = None
-    volume_24h: Optional[float] = None
-    txns_24h: Optional[int] = None
-    makers: Optional[int] = None
-    liquidity: Optional[float] = None
-    market_cap: Optional[float] = None
+    price: float | None = None
+    volume_24h: float | None = None
+    txns_24h: int | None = None
+    makers: int | None = None
+    liquidity: float | None = None
+    market_cap: float | None = None
 
     # Token Identification
-    symbol: Optional[str] = None
-    token_name: Optional[str] = None
-    chain: Optional[str] = None
-    protocol: Optional[str] = None
-    age: Optional[str] = None
-    boost: Optional[int] = None
+    symbol: str | None = None
+    token_name: str | None = None
+    chain: str | None = None
+    protocol: str | None = None
+    age: str | None = None
+    boost: int | None = None
 
     # Addresses (Base58 Solana format)
-    pair_address: Optional[str] = None
-    creator_address: Optional[str] = None
-    token_address: Optional[str] = None
-    quote_address: Optional[str] = None
+    pair_address: str | None = None
+    creator_address: str | None = None
+    token_address: str | None = None
+    quote_address: str | None = None
 
     # Social/Web Metadata
-    website: Optional[str] = None
-    twitter: Optional[str] = None
-    telegram: Optional[str] = None
+    website: str | None = None
+    twitter: str | None = None
+    telegram: str | None = None
 
     # Percentage Changes
-    change_5m: Optional[float] = None
-    change_1h: Optional[float] = None
-    change_6h: Optional[float] = None
-    change_24h: Optional[float] = None
+    change_5m: float | None = None
+    change_1h: float | None = None
+    change_6h: float | None = None
+    change_24h: float | None = None
 
     # Quality & Technical Metrics
     confidence_score: float = 0.0
     field_count: int = 0
-    record_position: Optional[int] = None
-    record_span: Optional[int] = None
-    timestamp: Optional[int] = None
+    record_position: int | None = None
+    record_span: int | None = None
+    timestamp: int | None = None
 
     def __post_init__(self) -> None:
         """Set timestamp if not provided."""
@@ -250,7 +250,7 @@ class TokenProfile:
             created_at=self.timestamp,
         )
 
-    def to_ohlc(self, timeframe: str = "1m") -> Optional[OHLCData]:
+    def to_ohlc(self, timeframe: str = "1m") -> OHLCData | None:
         """Convert to OHLC format with real extracted data."""
         if self.price is not None and self.volume_24h is not None:
             return OHLCData(
@@ -325,7 +325,7 @@ class TokenProfile:
         for key, string_value in string_defaults.items():
             data[key] = string_value
 
-        numeric_defaults: dict[str, Union[int, float]] = {
+        numeric_defaults: dict[str, int | float] = {
             "price": self.price or 0.0,
             "volume_24h": self.volume_24h or 0.0,
             "txns_24h": self.txns_24h or 0,
@@ -408,12 +408,10 @@ class ExtractedTokenBatch:
         with open(filename, "w", newline="") as csvfile:
             if format_type == "ohlcvt":
                 csvfile.write("DateTime,Open,High,Low,Close,Volume,Trades\n")
-                for ohlc in ohlc_data:
-                    csvfile.write(ohlc.to_ohlcvt_format() + "\n")
+                csvfile.writelines(ohlc.to_ohlcvt_format() + "\n" for ohlc in ohlc_data)
             else:  # Default OHLCV
                 csvfile.write("DateTime,Open,High,Low,Close,Volume\n")
-                for ohlc in ohlc_data:
-                    csvfile.write(ohlc.to_csv_format() + "\n")
+                csvfile.writelines(ohlc.to_csv_format() + "\n" for ohlc in ohlc_data)
 
         return filename
 
@@ -429,8 +427,7 @@ class ExtractedTokenBatch:
         ohlc_data = self.to_ohlc_batch()
 
         with open(filename, "w") as mt5file:
-            for ohlc in ohlc_data:
-                mt5file.write(ohlc.to_mt5_format() + "\n")
+            mt5file.writelines(ohlc.to_mt5_format() + "\n" for ohlc in ohlc_data)
 
         return filename
 
@@ -752,7 +749,7 @@ class PrometheusExporter:
         return "\n".join(lines) + "\n"
 
 
-def format_timestamp(timestamp: Optional[int]) -> str:
+def format_timestamp(timestamp: int | None) -> str:
     """Format timestamp for display."""
     if timestamp is None:
         return ""
