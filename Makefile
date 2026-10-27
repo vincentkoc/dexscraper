@@ -69,11 +69,15 @@ format:
 	$(PYTHON) -m ruff check --fix dexscraper tests
 	$(PYTHON) -m ruff format dexscraper tests
 
+format-check:
+	$(call warn_if_no_venv)
+	$(PYTHON) -m ruff format --check dexscraper tests
+
 mypy:
 	$(call warn_if_no_venv)
 	$(PYTHON) -m mypy dexscraper
 
-check: lint mypy test
+check: lint format-check mypy test
 
 precommit-install:
 	$(call warn_if_no_venv)
