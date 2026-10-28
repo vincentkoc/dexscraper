@@ -1051,7 +1051,7 @@ async def main() -> None:
     # Check if Rich is available for rich format
     if args.format == "rich" and not RICH_AVAILABLE:
         print(
-            "Rich format requires 'rich' package. Install with: pip install rich",
+            "Rich format requires the 'rich' package. Install with: pip install 'dexscraper[rich]'",
             file=sys.stderr,
         )
         sys.exit(1)

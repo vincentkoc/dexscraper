@@ -8,6 +8,12 @@ via setuptools_scm; per-release notes are also on the
 
 ## [Unreleased]
 
+### Added
+
+- A `rich` extra (`pip install "dexscraper[rich]"`) for `--format rich`; the
+  `dev` extra now lists `rich` directly instead of relying on it arriving
+  through `twine`.
+
 ### Fixed
 
 - `dexscraper --help` no longer exits with "incomplete format": the
