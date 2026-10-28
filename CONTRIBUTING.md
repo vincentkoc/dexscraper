@@ -129,7 +129,6 @@ dexscraper/
 ├── enhanced_protocol.py # Enhanced protocol with OHLC support
 ├── cloudflare_bypass.py # Cloudflare bypass utilities
 ├── cli.py               # Rich-based CLI interface
-├── logger.py            # Logging configuration
 ├── utils.py             # Utility functions
 └── _version.py          # Auto-generated version (setuptools-scm)
 ```

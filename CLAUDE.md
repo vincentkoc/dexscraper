@@ -60,7 +60,6 @@ dexscraper/
 ├── enhanced_protocol.py # Enhanced protocol with OHLC support
 ├── cloudflare_bypass.py # Cloudflare bypass utilities
 ├── cli.py               # Rich-based CLI interface
-├── logger.py            # Logging configuration
 ├── utils.py             # Utility functions
 └── _version.py          # Auto-generated version (setuptools-scm)
 ```
@@ -143,7 +142,7 @@ Comprehensive test coverage across all components:
   - Code formatting with black and isort
 
 ### Configuration
-- **Logging**: Configurable via `logger.py` with multiple levels
+- **Logging**: Standard library `logging` (`logging.getLogger(__name__)` per module)
 - **Multi-Chain**: Support for 8+ blockchain networks via `Chain` enum
 - **Flexible Ranking**: Multiple ranking options (volume, trending, price change)
 - **Advanced Filtering**: Volume, liquidity, market cap, age filters
