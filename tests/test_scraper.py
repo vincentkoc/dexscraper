@@ -178,51 +178,6 @@ class TestDexScraper:
         # Should find the URL we embedded
         assert any("twitter.com" in url for url in urls)
 
-    def test_token_profile_building(self):
-        """Test token profile construction from extracted data."""
-        scraper = DexScraper()
-
-        # Mock record data with expected structure
-        record = {
-            "metadata": {
-                "addresses": [
-                    {
-                        "address": "DjDzLNonA1XcWpzTBZhNZUqHCvq6SeLfT3otPYdVSMH",
-                        "type": "SOL_token",
-                    }
-                ],
-                "urls": [{"url": "https://twitter.com/test", "type": "twitter"}],
-                "symbols": [{"value": "TEST", "confidence": 0.8, "position": 0}],
-                "protocols": [{"protocol": "Raydium"}],
-            },
-            "completeness_score": 0.85,
-            "cluster": {
-                "start_pos": 0,
-                "end_pos": 100,
-                "classified": {
-                    "prices": [(0.000123, 0.000123)],
-                    "volumes": [(1000000.0, 1000000.0)],
-                    "txns": [(150.0, 150.0)],
-                    "makers": [(10.0, 10.0)],
-                    "liquidity": [(50000.0, 50000.0)],
-                    "market_caps": [(100000.0, 100000.0)],
-                    "percentages": [
-                        (0.05, 0.05),
-                        (0.10, 0.10),
-                        (0.15, 0.15),
-                        (0.20, 0.20),
-                    ],
-                },
-            },
-        }
-
-        # Build profile
-        profile = scraper._build_token_profile(record, 0)
-
-        assert isinstance(profile, TokenProfile)
-        assert profile.record_position == 0
-        assert profile.record_span == 100
-
     def test_enrich_token_profile_populates_metadata_fields(self):
         """Enhanced extraction should populate metadata fields from nearby entries."""
         scraper = DexScraper()

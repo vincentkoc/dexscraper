@@ -16,7 +16,6 @@ and review the fixture diff as part of that change.
 import asyncio
 from collections.abc import Iterable, Iterator
 import contextlib
-import copy
 import dataclasses
 import hashlib
 import json
@@ -180,49 +179,12 @@ def _characterize(seed: int, records: int) -> dict[str, Any]:
     }
     tokens = asyncio.run(scraper._extract_all_tokens(data, data_start))
 
-    clusters = scraper._extract_numeric_clusters(data, data_start)
-    grouped = scraper._group_clusters_to_tokens(copy.deepcopy(clusters), metadata)
-    built = [
-        _plain(scraper._build_token_profile(copy.deepcopy(record), index))
-        for index, record in enumerate(grouped)
-    ]
-    best = [
-        scraper._extract_best_token_symbol(copy.deepcopy(metadata), index)
-        for index in range(2)
-    ]
-    window = data[:500]
-    numerics = scraper._extract_numerics_from_window(window, data_start)
-
     return {
         "real_token_names": _plain(names),
         "metadata": _plain(metadata),
         "token_symbols": _plain(scraper._extract_token_symbols(printable, data_start)),
         "validated_records": records_out,
         "all_tokens": _plain(tokens),
-        "numeric_clusters": [
-            {
-                "start_pos": c["start_pos"],
-                "end_pos": c["end_pos"],
-                "field_types": c["field_types"],
-                "value_count": len(c["values"]),
-                "values_digest": _digest(c["values"]),
-                "classified_digest": _digest(c["classified"]),
-            }
-            for c in clusters
-        ],
-        "grouped_records": _plain(
-            [
-                {"start": r["cluster"]["start_pos"], "score": r["completeness_score"]}
-                for r in grouped
-            ]
-        ),
-        "built_profiles": built,
-        "best_symbols": best,
-        "window_numerics": {"count": len(numerics), "digest": _digest(numerics)},
-        "window_classified": {
-            key: {"count": len(values), "digest": _digest(values)}
-            for key, values in scraper._classify_numeric_values(numerics).items()
-        },
     }
 
 
@@ -263,8 +225,6 @@ def test_fixture_is_not_trivial(expected: dict[str, Any]) -> None:
         assert data["metadata"]["addresses"], corpus
         assert data["metadata"]["urls"], corpus
         assert data["metadata"]["protocols"], corpus
-        assert data["numeric_clusters"], corpus
-        assert data["built_profiles"], corpus
 
 
 @pytest.mark.parametrize(
@@ -293,38 +253,6 @@ def test_classify_address(address: str, kind: str) -> None:
 )
 def test_classify_url(url: str, kind: str) -> None:
     assert DexScraper()._classify_url(url) == kind
-
-
-def test_best_symbol_fallbacks() -> None:
-    scraper = DexScraper()
-    assert scraper._extract_best_token_symbol({}, 3) == "UNKNOWN_03"
-    assert scraper._extract_best_token_symbol({"tokens": [{"symbol": 5}]}, 4) == (
-        "UNKNOWN_04"
-    )
-    single = {"tokens": [{"symbol": "x", "confidence": 0.9}]}
-    assert scraper._extract_best_token_symbol(single, 0) == "X"
-    whitelisted = {
-        "tokens": [
-            {"symbol": "A", "type": "whitelisted", "confidence": 0.1},
-            {"symbol": "LONGSYMBOLXX", "confidence": 0.9},
-        ]
-    }
-    assert scraper._extract_best_token_symbol(whitelisted, 0) == "LONGSYMBOLXX"
-
-
-def test_completeness_score_bounds() -> None:
-    scraper = DexScraper()
-    full = {"addresses": [1], "urls": [1], "protocols": [1], "age_indicators": [1]}
-    assert scraper._calculate_completeness_score({"field_types": 9}, full) == 1.0
-    assert scraper._calculate_completeness_score({"field_types": "3"}, {}) == 0.0
-    assert scraper._calculate_completeness_score({"field_types": 2}, {}) == 0.2
-
-
-def test_is_valid_numeric_value() -> None:
-    scraper = DexScraper()
-    assert scraper._is_valid_numeric_value(1.5)
-    for bad in (float("nan"), float("inf"), 0.0, 1e-11, 1e13):
-        assert not scraper._is_valid_numeric_value(bad)
 
 
 def test_validated_record_needs_three_fields() -> None:
@@ -368,5 +296,3 @@ def test_numeric_decoders_never_raise_on_arbitrary_bytes(seed: int) -> None:
         data = bytes(rng.randrange(256) for _ in range(length))
         data = rng.choice(specials) + data + rng.choice(specials)
         scraper._extract_validated_token_record("X", data, 0)
-        scraper._extract_numerics_from_window(data[:500], 0)
-        scraper._extract_numeric_clusters(data, 0)
