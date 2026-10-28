@@ -76,13 +76,10 @@ pytest tests/test_scraper.py -v
 
 ```bash
 # Format code
-black dexscraper/ tests/
+ruff format dexscraper/ tests/
 
-# Sort imports
-isort dexscraper/ tests/
-
-# Lint code
-flake8 dexscraper/
+# Lint code (includes import sorting)
+ruff check dexscraper/ tests/
 
 # Type check
 mypy dexscraper/
@@ -93,9 +90,7 @@ pre-commit run --all-files
 
 ### Code Style Guidelines
 
-- **Black**: Code formatting (88 char line length)
-- **isort**: Import sorting with black profile
-- **flake8**: Linting with E203 extension ignored
+- **Ruff**: Formatting (88 char line length), linting and import sorting
 - **mypy**: Type checking with strict settings
 - **pytest**: Testing framework
 
@@ -109,9 +104,7 @@ We use pre-commit hooks to ensure code quality:
 - Large file checks
 - Merge conflict detection
 - Debug statement detection
-- Black formatting
-- isort import sorting
-- flake8 linting
+- Ruff formatting and linting (incl. import sorting)
 - mypy type checking
 - bandit security scanning
 
