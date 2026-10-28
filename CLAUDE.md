@@ -34,9 +34,8 @@ pytest -m "not slow"           # Skip slow tests
 
 ### Code Quality
 ```bash
-black dexscraper/ tests/        # Format code
-isort dexscraper/ tests/        # Sort imports
-flake8 dexscraper/              # Lint code
+ruff format dexscraper/ tests/  # Format code
+ruff check dexscraper/ tests/   # Lint code (incl. import sorting)
 mypy dexscraper/                # Type check
 pre-commit run --all-files      # Run all pre-commit hooks
 ```
@@ -139,7 +138,7 @@ Comprehensive test coverage across all components:
 - **Quality Gates**: Pre-commit hooks ensure code quality
   - Type checking with mypy
   - Security scanning with bandit
-  - Code formatting with black and isort
+  - Formatting and linting with ruff
 
 ### Configuration
 - **Logging**: Standard library `logging` (`logging.getLogger(__name__)` per module)
