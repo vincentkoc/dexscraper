@@ -96,7 +96,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest tests/ -v -m "not integration and not live" --cov=dexscraper --cov-report=xml --cov-report=term-missing
+        pytest tests/ -v -m "not integration and not live" --cov=dexscraper --cov-report=xml --cov-report=term-missing --cov-fail-under=65
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
