@@ -93,16 +93,6 @@ class DexScraper(RecordAssemblyMixin):
             "market_cap": 0.05,  # 5% for market cap data
         }
 
-        # Validated data ranges
-        self.value_ranges = {
-            "price": (0.000001, 0.1),  # Micro to deci range
-            "txns": (10, 50000),  # Transaction counts
-            "makers": (10, 15000),  # Maker counts
-            "volume": (100000, 10000000),  # Volume in USD
-            "liquidity": (10000, 1000000),  # Liquidity in USD
-            "market_cap": (100000, 50000000),  # Market cap in USD
-        }
-
         # Protocol patterns
         self.protocol_patterns = {
             "chain": ["solana"],

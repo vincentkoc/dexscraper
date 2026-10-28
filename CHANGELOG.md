@@ -30,6 +30,10 @@ via setuptools_scm; per-release notes are also on the
 ### Removed
 
 - The unused `dexscraper.logger` module.
+- The unused numeric-cluster extraction pipeline (`_extract_numeric_clusters`,
+  `_group_clusters_to_tokens`, `_build_token_profile` and the private helpers
+  only they called) and the `DexScraper.value_ranges` attribute it read.
+  Token extraction is unchanged.
 
 ## [1.1.0] - 2026-02-09
 

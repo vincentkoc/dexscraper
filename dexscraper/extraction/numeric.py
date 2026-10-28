@@ -1,7 +1,6 @@
 """Numeric field heuristics used by :class:`dexscraper.scraper.DexScraper`."""
 
 import logging
-import math
 import struct
 
 from ..models import TokenProfile
@@ -14,7 +13,6 @@ class NumericExtractionMixin:
     """Decode IEEE 754 and uint32 values and classify them as market fields."""
 
     debug: bool
-    value_ranges: dict[str, tuple[float, float]]
 
     def _extract_validated_token_record(
         self, token_name: str, record_data: bytes, position: int
@@ -95,143 +93,3 @@ class NumericExtractionMixin:
             )
 
         return None
-
-    def _extract_numeric_clusters(self, data: bytes, data_start: int) -> list[dict]:
-        """Extract numeric clusters using validated methodology."""
-        clusters = []
-        window_size = 500  # Validated window size
-        step_size = 200  # Overlapping windows for complete coverage
-
-        for offset in range(0, len(data) - window_size, step_size):
-            window = data[offset : offset + window_size]
-            numeric_values = self._extract_numerics_from_window(
-                window, data_start + offset
-            )
-
-            if len(numeric_values) >= 5:  # Minimum fields for a cluster
-                # Classify values by type
-                classified = self._classify_numeric_values(numeric_values)
-
-                # Require at least 3 different field types
-                field_types = len([k for k, v in classified.items() if v])
-                if field_types >= 3:
-                    clusters.append(
-                        {
-                            "start_pos": data_start + offset,
-                            "end_pos": data_start + offset + window_size,
-                            "values": numeric_values,
-                            "classified": classified,
-                            "field_types": field_types,
-                        }
-                    )
-
-        return clusters
-
-    def _extract_numerics_from_window(
-        self, window: bytes, base_offset: int
-    ) -> list[tuple]:
-        """Extract all numeric values from window with validation."""
-        values = []
-
-        # Extract doubles (8-byte IEEE 754)
-        for i in range(0, len(window) - 8, 4):
-            val = struct.unpack("<d", window[i : i + 8])[0]
-            if self._is_valid_numeric_value(val):
-                values.append((base_offset + i, val, "double"))
-
-        # Extract floats (4-byte IEEE 754)
-        for i in range(0, len(window) - 4, 2):
-            # Skip positions covered by doubles
-            if any(abs((base_offset + i) - pos) < 4 for pos, _, _ in values):
-                continue
-
-            val = struct.unpack("<f", window[i : i + 4])[0]
-            if self._is_valid_numeric_value(val):
-                values.append((base_offset + i, val, "float"))
-
-        # Extract 32-bit integers (counts)
-        for i in range(0, len(window) - 4, 4):
-            # Skip positions covered by other types
-            if any(abs((base_offset + i) - pos) < 4 for pos, _, _ in values):
-                continue
-
-            val = struct.unpack("<I", window[i : i + 4])[0]
-            if self.value_ranges["txns"][0] <= val <= self.value_ranges["makers"][1]:
-                values.append((base_offset + i, float(val), "uint32"))
-
-        # Sort by position and remove overlaps
-        values.sort(key=lambda x: x[0])
-        return values
-
-    def _is_valid_numeric_value(self, val: float) -> bool:
-        """Validate numeric value using established ranges."""
-        return (
-            not math.isnan(val)
-            and not math.isinf(val)
-            and abs(val) > 1e-10
-            and abs(val) < 1e12
-        )
-
-    def _classify_numeric_values(
-        self, values: list[tuple[int, float, str]]
-    ) -> dict[str, list[tuple[int, float, str]]]:
-        """Classify numeric values by probable field type using validated ranges."""
-        classified: dict[str, list[tuple[int, float, str]]] = {
-            "prices": [],
-            "txns": [],
-            "makers": [],
-            "volumes": [],
-            "liquidity": [],
-            "market_caps": [],
-            "percentages": [],
-        }
-
-        for pos, val, dtype in values:
-            # Price classification (small decimals)
-            if self.value_ranges["price"][0] <= val <= self.value_ranges["price"][1]:
-                classified["prices"].append((pos, val, dtype))
-
-            # Transaction count classification
-            elif (
-                dtype == "uint32"
-                and self.value_ranges["txns"][0] <= val <= self.value_ranges["txns"][1]
-            ):
-                classified["txns"].append((pos, val, dtype))
-
-            # Maker count classification (usually smaller than txns)
-            elif (
-                dtype in ["uint32", "float"]
-                and self.value_ranges["makers"][0]
-                <= val
-                <= self.value_ranges["makers"][1]
-                and val < 20000
-            ):  # Makers typically < 20K
-                classified["makers"].append((pos, val, dtype))
-
-            # Volume classification
-            elif (
-                self.value_ranges["volume"][0] <= val <= self.value_ranges["volume"][1]
-            ):
-                classified["volumes"].append((pos, val, dtype))
-
-            # Liquidity classification
-            elif (
-                self.value_ranges["liquidity"][0]
-                <= val
-                <= self.value_ranges["liquidity"][1]
-            ):
-                classified["liquidity"].append((pos, val, dtype))
-
-            # Market cap classification
-            elif (
-                self.value_ranges["market_cap"][0]
-                <= val
-                <= self.value_ranges["market_cap"][1]
-            ):
-                classified["market_caps"].append((pos, val, dtype))
-
-            # Percentage changes (-100% to +1000%)
-            elif -100 <= val <= 1000 and abs(val) > 0.01:
-                classified["percentages"].append((pos, val, dtype))
-
-        return classified
