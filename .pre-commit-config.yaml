@@ -15,22 +15,24 @@ repos:
       - id: debug-statements
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.1
+    rev: v3.22.0
     hooks:
       - id: pyupgrade
-        args: [--py39-plus]
+        args: [--py310-plus]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.6
+    rev: v0.17.3
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix, --show-fixes]
+        files: ^(dexscraper|tests)/.*\.py$
         exclude: "dexscraper/_version\\.py"
       - id: ruff-format
+        files: ^(dexscraper|tests)/.*\.py$
         exclude: "dexscraper/_version\\.py"
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
+    rev: v2.4.0
     hooks:
       - id: mypy
         args: [--config-file, pyproject.toml, dexscraper]
@@ -38,16 +40,20 @@ repos:
         additional_dependencies:
           - rich>=13.0.0
           - setuptools_scm[toml]>=6.2
+          - websockets>=15.0
+          - cloudscraper>=1.2.71
+          - requests>=2.33.0
+          - typing_extensions>=4.0
         exclude: "dexscraper/_version\\.py"
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
+    rev: v2.4.3
     hooks:
       - id: codespell
         args: ["--skip=*.json,*.jsonl,*.ipynb"]
 
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.3
+    rev: 1.9.4
     hooks:
       - id: bandit
         args: ["-r", "dexscraper/"]
