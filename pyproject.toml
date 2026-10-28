@@ -48,7 +48,11 @@ Repository = "https://github.com/vincentkoc/dexscraper.git"
 Issues = "https://github.com/vincentkoc/dexscraper/issues"
 
 [project.optional-dependencies]
+rich = [
+    "rich>=13.0.0",
+]
 dev = [
+    "rich>=13.0.0",
     "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=2.12.0",

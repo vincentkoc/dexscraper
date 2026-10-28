@@ -36,6 +36,9 @@ pip install dexscraper
 
 # or uv install
 uv pip install dexscraper
+
+# add the Rich terminal UI used by --format rich
+pip install "dexscraper[rich]"
 ```
 
 </details>
