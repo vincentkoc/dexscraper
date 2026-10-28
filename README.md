@@ -90,6 +90,27 @@ dexscraper trending --chain solana --format json --output pairs.json --once   # 
 dexscraper --mode trending --chain solana --format rich                       # gui mode
 ```
 
+### Options
+
+Run `dexscraper --help` for the full list. Grouped summary:
+
+| Area | Flags |
+| --- | --- |
+| Output | `--format/-f {json,ohlc,mt5,ohlcv,ohlcvt,rich}`, `--once`, `--limit N` (default 20), `--output FILE` (with `--once`), `--debug/-d` |
+| Connection | `--cloudflare-bypass`, `--rate-limit/-r N` (req/s, default 4.0), `--max-retries/-m N` (default 5) |
+| Presets | `--mode {trending,top,gainers,new,transactions,boosted}` |
+| Scope | `--chain NAME` (default solana) or `--chains a,b`, `--dex NAME` or `--dexs a,b`, `--timeframe/-t {m5,h1,h6,h24}` (default h24) |
+| Ranking | `--rank-by {trendingScoreM5,trendingScoreH1,trendingScoreH6,trendingScoreH24,volume,txns,priceChangeH24,priceChangeH6,priceChangeH1,liquidity,fdv,marketCap}`, `--order {asc,desc}` |
+| Liquidity / value | `--min-liquidity`, `--max-liquidity` (USD), `--min-fdv`, `--max-fdv`, `--min-mcap`, `--max-mcap` |
+| Volume (USD) | `--min-volume`, `--max-volume` (24h), `--min-volume-h6`, `--max-volume-h6`, `--min-volume-h1`, `--max-volume-h1` |
+| Transactions | `--min-txns`, `--max-txns` (24h), `--min-txns-h6`, `--max-txns-h6`, `--min-txns-h1`, `--max-txns-h1` |
+| Price change (%) | `--min-change`, `--max-change` (24h), `--min-change-h6`, `--max-change-h6`, `--min-change-h1`, `--max-change-h1` |
+| Pair age (hours) | `--min-age`, `--max-age` |
+| Promotion | `--enhanced` (enhanced token info only), `--min-boosts N`, `--min-ads N` |
+
+Chains: solana, ethereum, base, bsc, polygon, arbitrum, optimism, avalanche.
+DEXs: raydium, pumpfun, pumpswap, orca, jupiter, meteora, uniswap, uniswapv3, sushiswap, pancakeswap, aerodrome, baseswap.
+
 ## Python SDK
 
 ```python
