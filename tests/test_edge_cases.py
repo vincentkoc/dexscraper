@@ -1,6 +1,5 @@
 """Test edge cases and scenarios identified in ANALYSIS.md."""
 
-import asyncio
 from unittest.mock import patch
 
 import pytest
@@ -348,7 +347,7 @@ class TestWebSocketEdgeCases:
         scraper = DexScraper(max_retries=2)  # Low retry count for testing
 
         with patch(
-            "websockets.connect", side_effect=asyncio.TimeoutError("Connection timeout")
+            "websockets.connect", side_effect=TimeoutError("Connection timeout")
         ):
             websocket = await scraper._connect()
             assert websocket is None

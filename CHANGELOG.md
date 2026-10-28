@@ -17,8 +17,9 @@ via setuptools_scm; per-release notes are also on the
 
 ### Changed
 
-- Python 3.9 is no longer supported (`requires-python >=3.10`); CI tests
-  3.10 through 3.14.
+- **Breaking:** Python 3.9 and 3.10 are no longer supported
+  (`requires-python >=3.11`); CI tests 3.11 through 3.14. Python 3.10 reached
+  end of life in October 2026.
 - Live WebSocket tests are opt-in via `DEXSCRAPER_LIVE=1`.
 - CI gates on `ruff check`, `ruff format --check` and `mypy`.
 - Ruff is the only formatter/linter; legacy black, isort and flake8 config was
