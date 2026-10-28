@@ -39,7 +39,6 @@ dependencies = [
     "websockets>=15.0",
     "cloudscraper>=1.2.71",
     "requests>=2.33.0",
-    "typing_extensions>=4.0",
 ]
 dynamic = ["version"]
 
