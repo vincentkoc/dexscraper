@@ -66,7 +66,7 @@ dev = [
 dexscraper = "dexscraper.cli:cli_main"
 
 [tool.setuptools]
-packages = ["dexscraper"]
+packages = ["dexscraper", "dexscraper.extraction"]
 
 [tool.setuptools_scm]
 local_scheme = "no-local-version"
