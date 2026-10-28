@@ -24,92 +24,56 @@ class NumericExtractionMixin:
 
         # Use exact logic from analyze_protocol_deep.py that WORKS
         for offset in range(len(record_data) - 8):
-            try:
-                # Extract double (primary format per ANALYSIS.md)
-                val = struct.unpack("<d", record_data[offset : offset + 8])[0]
+            # Extract double (primary format per ANALYSIS.md)
+            val = struct.unpack("<d", record_data[offset : offset + 8])[0]
 
-                # Use exact classification from working deep analyzer
-                if 0.000001 <= val <= 0.1:  # Price range
-                    if "price" not in fields:
-                        fields["price"] = val
-                elif 1000 <= val <= 10000000:  # Volume/liquidity/mcap
-                    if val >= 1000000 and "market_cap" not in fields:
-                        fields["market_cap"] = val
-                    elif val >= 100000 and "volume_24h" not in fields:
-                        fields["volume_24h"] = val
-                    elif "liquidity" not in fields:
-                        fields["liquidity"] = val
-                elif 10 <= val <= 50000:  # Txns/makers - use deep analyzer logic
-                    if val >= 1000 and "txns_24h" not in fields:
-                        fields["txns_24h"] = int(val)
-                    elif "makers" not in fields:
-                        fields["makers"] = int(val)
-            except (
-                ValueError,
-                TypeError,
-                struct.error,
-                IndexError,
-                OverflowError,
-                UnicodeDecodeError,
-                KeyError,
-                OSError,
-            ):
-                continue
+            # Use exact classification from working deep analyzer
+            if 0.000001 <= val <= 0.1:  # Price range
+                if "price" not in fields:
+                    fields["price"] = val
+            elif 1000 <= val <= 10000000:  # Volume/liquidity/mcap
+                if val >= 1000000 and "market_cap" not in fields:
+                    fields["market_cap"] = val
+                elif val >= 100000 and "volume_24h" not in fields:
+                    fields["volume_24h"] = val
+                elif "liquidity" not in fields:
+                    fields["liquidity"] = val
+            elif 10 <= val <= 50000:  # Txns/makers - use deep analyzer logic
+                if val >= 1000 and "txns_24h" not in fields:
+                    fields["txns_24h"] = int(val)
+                elif "makers" not in fields:
+                    fields["makers"] = int(val)
 
         # Also try float extraction (as deep analyzer does)
         for offset in range(len(record_data) - 4):
-            try:
-                val = struct.unpack("<f", record_data[offset : offset + 4])[0]
+            val = struct.unpack("<f", record_data[offset : offset + 4])[0]
 
-                if 0.000001 <= val <= 0.1:  # Price range
-                    if "price" not in fields:
-                        fields["price"] = val
-                elif 1000 <= val <= 10000000:  # Volume/liquidity/mcap
-                    if val >= 1000000 and "market_cap" not in fields:
-                        fields["market_cap"] = val
-                    elif val >= 100000 and "volume_24h" not in fields:
-                        fields["volume_24h"] = val
-                    elif "liquidity" not in fields:
-                        fields["liquidity"] = val
-                elif 10 <= val <= 50000:  # Txns/makers
-                    if val >= 1000 and "txns_24h" not in fields:
-                        fields["txns_24h"] = int(val)
-                    elif "makers" not in fields:
-                        fields["makers"] = int(val)
-            except (
-                ValueError,
-                TypeError,
-                struct.error,
-                IndexError,
-                OverflowError,
-                UnicodeDecodeError,
-                KeyError,
-                OSError,
-            ):
-                continue
+            if 0.000001 <= val <= 0.1:  # Price range
+                if "price" not in fields:
+                    fields["price"] = val
+            elif 1000 <= val <= 10000000:  # Volume/liquidity/mcap
+                if val >= 1000000 and "market_cap" not in fields:
+                    fields["market_cap"] = val
+                elif val >= 100000 and "volume_24h" not in fields:
+                    fields["volume_24h"] = val
+                elif "liquidity" not in fields:
+                    fields["liquidity"] = val
+            elif 10 <= val <= 50000:  # Txns/makers
+                if val >= 1000 and "txns_24h" not in fields:
+                    fields["txns_24h"] = int(val)
+                elif "makers" not in fields:
+                    fields["makers"] = int(val)
 
         # CRITICAL: Also extract uint32 integers for transaction counts (as deep analyzer finds)
         for offset in range(len(record_data) - 4):
-            try:
-                val = struct.unpack("<I", record_data[offset : offset + 4])[0]
+            val = struct.unpack("<I", record_data[offset : offset + 4])[0]
 
-                # Transaction counts: 1000 to 50000 range (based on deep analyzer findings)
-                if 1000 <= val <= 50000 and "txns_24h" not in fields:
-                    fields["txns_24h"] = val
-                # Maker counts: 10 to 1000 range
-                elif 10 <= val <= 1000 and "makers" not in fields:
-                    fields["makers"] = val
-            except (
-                ValueError,
-                TypeError,
-                struct.error,
-                IndexError,
-                OverflowError,
-                UnicodeDecodeError,
-                KeyError,
-                OSError,
-            ):
-                continue
+            # Transaction counts: 1000 to 50000 range (based on deep analyzer findings)
+            if 1000 <= val <= 50000 and "txns_24h" not in fields:
+                fields["txns_24h"] = val
+            # Maker counts: 10 to 1000 range
+            elif 10 <= val <= 1000 and "makers" not in fields:
+                fields["makers"] = val
 
         # Return token with at least 3 fields (as deep analyzer does)
         if len(fields) >= 3:
@@ -171,21 +135,9 @@ class NumericExtractionMixin:
 
         # Extract doubles (8-byte IEEE 754)
         for i in range(0, len(window) - 8, 4):
-            try:
-                val = struct.unpack("<d", window[i : i + 8])[0]
-                if self._is_valid_numeric_value(val):
-                    values.append((base_offset + i, val, "double"))
-            except (
-                ValueError,
-                TypeError,
-                struct.error,
-                IndexError,
-                OverflowError,
-                UnicodeDecodeError,
-                KeyError,
-                OSError,
-            ):
-                continue
+            val = struct.unpack("<d", window[i : i + 8])[0]
+            if self._is_valid_numeric_value(val):
+                values.append((base_offset + i, val, "double"))
 
         # Extract floats (4-byte IEEE 754)
         for i in range(0, len(window) - 4, 2):
@@ -193,21 +145,9 @@ class NumericExtractionMixin:
             if any(abs((base_offset + i) - pos) < 4 for pos, _, _ in values):
                 continue
 
-            try:
-                val = struct.unpack("<f", window[i : i + 4])[0]
-                if self._is_valid_numeric_value(val):
-                    values.append((base_offset + i, val, "float"))
-            except (
-                ValueError,
-                TypeError,
-                struct.error,
-                IndexError,
-                OverflowError,
-                UnicodeDecodeError,
-                KeyError,
-                OSError,
-            ):
-                continue
+            val = struct.unpack("<f", window[i : i + 4])[0]
+            if self._is_valid_numeric_value(val):
+                values.append((base_offset + i, val, "float"))
 
         # Extract 32-bit integers (counts)
         for i in range(0, len(window) - 4, 4):
@@ -215,25 +155,9 @@ class NumericExtractionMixin:
             if any(abs((base_offset + i) - pos) < 4 for pos, _, _ in values):
                 continue
 
-            try:
-                val = struct.unpack("<I", window[i : i + 4])[0]
-                if (
-                    self.value_ranges["txns"][0]
-                    <= val
-                    <= self.value_ranges["makers"][1]
-                ):
-                    values.append((base_offset + i, float(val), "uint32"))
-            except (
-                ValueError,
-                TypeError,
-                struct.error,
-                IndexError,
-                OverflowError,
-                UnicodeDecodeError,
-                KeyError,
-                OSError,
-            ):
-                continue
+            val = struct.unpack("<I", window[i : i + 4])[0]
+            if self.value_ranges["txns"][0] <= val <= self.value_ranges["makers"][1]:
+                values.append((base_offset + i, float(val), "uint32"))
 
         # Sort by position and remove overlaps
         values.sort(key=lambda x: x[0])

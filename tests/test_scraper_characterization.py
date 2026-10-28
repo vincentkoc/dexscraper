@@ -348,3 +348,25 @@ def test_validated_record_needs_three_fields() -> None:
     assert profile is not None
     assert (profile.symbol, profile.price, profile.field_count) == ("X", 0.005, 6)
     assert profile.confidence_score == 0.95
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_numeric_decoders_never_raise_on_arbitrary_bytes(seed: int) -> None:
+    """The decoders slice fixed-width windows, so struct.unpack cannot fail.
+
+    Includes NaN/inf bit patterns and lengths shorter than one value.
+    """
+    rng = random.Random(seed)
+    scraper = DexScraper()
+    specials = [
+        struct.pack("<d", float("nan")),
+        struct.pack("<d", float("inf")),
+        struct.pack("<f", float("-inf")),
+        b"\xff" * 8,
+    ]
+    for length in [0, 1, 3, 4, 5, 7, 8, 9, 16, 257, 700, 1201]:
+        data = bytes(rng.randrange(256) for _ in range(length))
+        data = rng.choice(specials) + data + rng.choice(specials)
+        scraper._extract_validated_token_record("X", data, 0)
+        scraper._extract_numerics_from_window(data[:500], 0)
+        scraper._extract_numeric_clusters(data, 0)
