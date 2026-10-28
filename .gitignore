@@ -169,3 +169,6 @@ data/
 output/
 *.json
 dexscraper/_version.py
+
+# Test fixtures are data, not build output.
+!tests/fixtures/*.json
