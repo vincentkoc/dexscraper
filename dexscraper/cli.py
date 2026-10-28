@@ -861,8 +861,8 @@ def build_config_from_args(args: argparse.Namespace) -> ScrapingConfig:
     return config
 
 
-async def main() -> None:
-    """Main CLI entry point."""
+def create_parser() -> argparse.ArgumentParser:
+    """Build the dexscraper argument parser."""
     parser = argparse.ArgumentParser(
         description="DexScreener WebSocket scraper for real-time crypto data",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1007,12 +1007,24 @@ Examples:
     parser.add_argument("--max-age", type=int, help="Maximum pair age in hours")
 
     # Price change filters
-    parser.add_argument("--min-change", type=float, help="Minimum 24h price change %")
-    parser.add_argument("--max-change", type=float, help="Maximum 24h price change %")
-    parser.add_argument("--min-change-h6", type=float, help="Minimum 6h price change %")
-    parser.add_argument("--max-change-h6", type=float, help="Maximum 6h price change %")
-    parser.add_argument("--min-change-h1", type=float, help="Minimum 1h price change %")
-    parser.add_argument("--max-change-h1", type=float, help="Maximum 1h price change %")
+    parser.add_argument(
+        "--min-change", type=float, help="Minimum 24h price change (%%)"
+    )
+    parser.add_argument(
+        "--max-change", type=float, help="Maximum 24h price change (%%)"
+    )
+    parser.add_argument(
+        "--min-change-h6", type=float, help="Minimum 6h price change (%%)"
+    )
+    parser.add_argument(
+        "--max-change-h6", type=float, help="Maximum 6h price change (%%)"
+    )
+    parser.add_argument(
+        "--min-change-h1", type=float, help="Minimum 1h price change (%%)"
+    )
+    parser.add_argument(
+        "--max-change-h1", type=float, help="Maximum 1h price change (%%)"
+    )
 
     # Market cap / FDV filters
     parser.add_argument("--min-fdv", type=int, help="Minimum fully diluted valuation")
@@ -1028,7 +1040,12 @@ Examples:
     parser.add_argument(
         "--min-ads", type=int, help="Minimum recent purchased impressions"
     )
+    return parser
 
+
+async def main() -> None:
+    """Main CLI entry point."""
+    parser = create_parser()
     args = parser.parse_args(normalize_legacy_cli_args(sys.argv[1:]))
 
     # Check if Rich is available for rich format

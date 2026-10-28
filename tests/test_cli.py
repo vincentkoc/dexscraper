@@ -8,6 +8,7 @@ import pytest
 from dexscraper.cli import (
     SlickCLI,
     build_config_from_args,
+    create_parser,
     create_token_callback,
     emit_cloudflare_runtime_warning,
     parse_chain,
@@ -499,3 +500,10 @@ class TestCLIIntegration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+def test_help_renders_without_format_errors() -> None:
+    """Every help string must survive argparse %-formatting (Python 3.14 checks eagerly)."""
+    parser = create_parser()
+    help_text = parser.format_help()
+    assert "Minimum 24h price change (%)" in help_text
