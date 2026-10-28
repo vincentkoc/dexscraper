@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import hashlib
 import re
 import struct
@@ -292,7 +292,7 @@ def format_timestamp(timestamp: int | None = None) -> str:
     if timestamp is None:
         timestamp = int(time.time())
 
-    dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+    dt = datetime.fromtimestamp(timestamp, tz=UTC)
     return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
