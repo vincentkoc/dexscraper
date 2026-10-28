@@ -53,6 +53,11 @@ safety check                    # Dependency vulnerability scan
 dexscraper/
 ├── __init__.py          # Package exports and version
 ├── scraper.py           # Main DexScraper class
+├── extraction/          # Binary extraction heuristics mixed into DexScraper
+│   ├── symbols.py       #   token symbol/name detection
+│   ├── numeric.py       #   IEEE 754 / uint32 field decoding
+│   ├── metadata.py      #   addresses, URLs, protocols, age markers
+│   └── records.py       #   assembling TokenProfile records
 ├── config.py            # Configuration classes and enums
 ├── models.py            # Data models (TradingPair, TokenProfile, etc.)
 ├── protocol.py          # Binary protocol decoder (legacy)
