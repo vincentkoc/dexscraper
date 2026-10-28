@@ -29,6 +29,8 @@ via setuptools_scm; per-release notes are also on the
 
 ### Removed
 
+- The unused `typing_extensions` runtime dependency; nothing in the package
+  imports it.
 - The unused `dexscraper.logger` module.
 - The unused numeric-cluster extraction pipeline (`_extract_numeric_clusters`,
   `_group_clusters_to_tokens`, `_build_token_profile` and the private helpers
