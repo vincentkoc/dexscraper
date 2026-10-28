@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Draft release notes
-        uses: release-drafter/release-drafter@v6
+        uses: release-drafter/release-drafter@v7
         with:
           # Prevent automatic draft releases during normal PR flow.
           # Manual workflow_dispatch can still be used to refresh a draft.
