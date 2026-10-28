@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref }}
@@ -80,7 +80,7 @@ jobs:
           echo "value=${{ steps.release_meta.outputs.tag }}" | sed 's/^value=v/value=/' >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -114,7 +114,7 @@ jobs:
           python -m twine check dist/*
 
       - name: Upload release assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets-${{ steps.release_meta.outputs.tag }}
           path: |
@@ -131,12 +131,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Download release assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-assets-${{ needs.build.outputs.release_tag }}
           path: release-assets
@@ -159,7 +159,7 @@ jobs:
 
       - name: Publish release from Release Drafter
         id: release_drafter
-        uses: release-drafter/release-drafter@v6
+        uses: release-drafter/release-drafter@v7
         with:
           publish: true
           tag: ${{ needs.build.outputs.release_tag }}
@@ -206,7 +206,7 @@ jobs:
 
     steps:
       - name: Download release assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-assets-${{ needs.build.outputs.release_tag }}
           path: release-assets
